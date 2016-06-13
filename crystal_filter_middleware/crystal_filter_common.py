@@ -86,7 +86,7 @@ def write_metadata(fd, metadata, xattr_size=65536, md_key=None):
             raise
 
 
-def put_metadata(app, req, crystal_md):    
+def put_metadata(app, req, crystal_md):
     get_req = req.copy_get()
     get_resp = get_req.get_response(app)
 

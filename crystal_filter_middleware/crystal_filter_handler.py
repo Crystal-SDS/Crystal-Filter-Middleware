@@ -16,7 +16,10 @@ import ConfigParser
 import mimetypes
 import redis
 import json
+import eventlet
 
+from threading import Thread
+import os
 
 class NotSDSFilterRequest(Exception):
     pass
@@ -186,6 +189,12 @@ class BaseSDSFilterHandler(object):
         if 'CONTENT_LENGTH' in self.request.environ:
             self.request.environ.pop('CONTENT_LENGTH')
         self.request.headers['Transfer-Encoding'] = 'chunked'
+        
+    def _copy_pipe(self, reader, writer):
+        for chunk in iter(lambda: reader.next(), ''):
+            writer.write(chunk)   
+        reader.close()
+        writer.close()
 
 
 class SDSFilterProxyHandler(BaseSDSFilterHandler):
@@ -283,36 +292,37 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
                 filter_execution_list[int(key)] = filter_execution
         
         ''' Parse filter list '''
-        for _, filter_metadata in self.filter_list.items():            
-            filter_metadata = json.loads(filter_metadata)
-  
-            # Check conditions
-            if filter_metadata["is_" + self.method]:
-                if self.check_size_type(filter_metadata):
-                    filter_name = filter_metadata['name']
-                    server = filter_metadata["execution_server"]
-                    reverse = filter_metadata["execution_server_reverse"]
-                    params = filter_metadata["params"]
-                    filter_id = filter_metadata["filter_id"]
-                    filter_type = 'storlet' #filter_metadata["filter_type"]
-                    filter_main = filter_metadata["main"]
-                    filter_dependencies = filter_metadata["dependencies"]
-                    filter_size = filter_metadata["content_length"]
-                    has_reverse = filter_metadata["has_reverse"]
-                    
-                    filter_execution = {'name': filter_name,
-                                        'params': params,
-                                        'execution_server': server,
-                                        'execution_server_reverse': reverse,
-                                        'id': filter_id,
-                                        'type': filter_type,
-                                        'main': filter_main,
-                                        'dependencies': filter_dependencies,
-                                        'size': filter_size,
-                                        'has_reverse': has_reverse}
-                   
-                    launch_key = filter_metadata["execution_order"]
-                    filter_execution_list[launch_key] = filter_execution
+        if self.filter_list:
+            for _, filter_metadata in self.filter_list.items():            
+                filter_metadata = json.loads(filter_metadata)
+      
+                # Check conditions
+                if filter_metadata["is_" + self.method]:
+                    if self.check_size_type(filter_metadata):
+                        filter_name = filter_metadata['name']
+                        server = filter_metadata["execution_server"]
+                        reverse = filter_metadata["execution_server_reverse"]
+                        params = filter_metadata["params"]
+                        filter_id = filter_metadata["filter_id"]
+                        filter_type = 'storlet' #filter_metadata["filter_type"]
+                        filter_main = filter_metadata["main"]
+                        filter_dependencies = filter_metadata["dependencies"]
+                        filter_size = filter_metadata["content_length"]
+                        has_reverse = filter_metadata["has_reverse"]
+                        
+                        filter_execution = {'name': filter_name,
+                                            'params': params,
+                                            'execution_server': server,
+                                            'execution_server_reverse': reverse,
+                                            'id': filter_id,
+                                            'type': filter_type,
+                                            'main': filter_main,
+                                            'dependencies': filter_dependencies,
+                                            'size': filter_size,
+                                            'has_reverse': has_reverse}
+                       
+                        launch_key = filter_metadata["execution_order"]
+                        filter_execution_list[launch_key] = filter_execution
         
         return filter_execution_list
 
@@ -332,10 +342,22 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
             self.logger.info('Crystal Filters - There are filters to execute '
                              'from object server')
             filter_exec_list = json.loads(resp.headers.pop('CRYSTAL-FILTERS'))
-            return self.apply_filters_on_get(resp, filter_exec_list)
-
+            resp = self.apply_filters_on_get(resp, filter_exec_list)
+            """
+            # ---------------------
+            r, w = os.pipe()
+            out_reader = os.fdopen(r,'r')
+            write_pipe = os.fdopen(w,'w')
+            app_iter = resp.app_iter
+            eventlet.spawn_n(self._copy_pipe,app_iter,write_pipe)
+            #th = Thread(target=self._copy_pipe,args=(app_iter,write_pipe))
+            #th.daemon = True
+            #th.start()
+            resp.app_iter = out_reader
+            # ---------------------
+            """
         return resp
-    
+
     def PUT(self):
         """
         PUT handler on Proxy
@@ -445,7 +467,18 @@ class SDSFilterObjectHandler(BaseSDSFilterHandler):
                                      iostack_md.get('filter-exec-list',None))
             
             if filter_exec_list:
-                return self.apply_filters_on_get(resp, filter_exec_list)
+                resp = self.apply_filters_on_get(resp, filter_exec_list)
+                """
+                # ---------------------
+                r, w = os.pipe()
+                out_reader = os.fdopen(r,'r')
+                write_pipe = os.fdopen(w,'w')
+                app_iter = resp.app_iter
+                #resp.app_iter.closed = True
+                Thread(target=self._copy_pipe,args=(app_iter,write_pipe)).start()
+                resp.app_iter = out_reader
+                # ---------------------
+                """
             
         return resp
                
@@ -492,8 +525,8 @@ class SDSFilterHandlerMiddleware(object):
         
         ''' Singleton instance of filter control '''
         self.control_class = CrystalFilterControl
-        self.filter_control =  self.control_class.Instance(conf = self.conf,
-                                                           log = self.logger)
+        self.filter_control =  self.control_class(conf = self.conf,
+                                                  log = self.logger)
         
     def _get_handler(self, exec_server):
         if exec_server == 'proxy':

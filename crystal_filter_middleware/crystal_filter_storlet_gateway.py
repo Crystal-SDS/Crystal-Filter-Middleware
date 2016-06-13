@@ -26,37 +26,42 @@ class SDSGatewayStorlet():
 
     def set_storlet_request(self, req_resp, params):
 
-        self.gateway = StorletGatewayDocker(self.conf, self.logger, self.app,
-                                            self.version, self.account,
-                                            self.container, self.obj)
+        self.gateway = StorletGatewayDocker(self.conf, self.logger, 
+                                            self.app, self.account)
 
         self.gateway_method = getattr(self.gateway, "gateway" +
                                       self.server.title() +
                                       self.method.title() + "Flow")
 
-        # Set the Storlet Metadata to storletgateway
-        md = {}
-        md['X-Object-Meta-Storlet-Main'] = self.storlet_metadata['main']
-        md['X-Object-Meta-Storlet-Dependency'] = self.storlet_metadata['dependencies']
-        md['Content-Length'] = self.storlet_metadata['size']
+        # Set the Storlet metadata to the request
+        # Available keys:
+        # Content-Length
+        # Interface-Version
+        # Language
+        # Dependency
+        # X-Timestamp
+        # Object-Metadata
+        # Main 
+
+        storlet_metadata = {}
+        storlet_metadata['Main'] = self.storlet_metadata['main']
+        storlet_metadata['Dependency'] = self.storlet_metadata['dependencies']
+        storlet_metadata['Content-Length'] = self.storlet_metadata['size']
         #md['ETag'] = self.storlet_metadata['etag']
-        self.gateway.storlet_metadata = md
         
         # Simulate Storlet request
         new_env = dict(req_resp.environ)
         req = Request.blank(new_env['PATH_INFO'], new_env)
         req.headers['X-Run-Storlet'] = self.storlet_name
-        self.gateway.augmentStorletRequest(req)
+        self.gateway.augmentStorletRequest(req, storlet_metadata)
         req.environ['QUERY_STRING'] = params.replace(',', '&')
 
         return req
 
-    def launch_storlet(self, req_resp, params, input_pipe=None):
+    def _launch_storlet(self, req_resp, params, input_pipe=None):
         req = self.set_storlet_request(req_resp, params)
 
-        (_, app_iter) = self.gateway_method(req, self.container,
-                                            self.obj, req_resp,
-                                            input_pipe)
+        (_, app_iter) = self.gateway_method(req, req_resp, input_pipe)
 
         return app_iter
 
@@ -69,6 +74,6 @@ class SDSGatewayStorlet():
         self.logger.info('Crystal Filters - Go to execute ' + storlet +
                          ' storlet with parameters "' + params + '"')
                 
-        app_iter = self.launch_storlet(req_resp, params, app_iter)
+        app_iter = self._launch_storlet(req_resp, params, app_iter)
         
         return app_iter
