@@ -1,9 +1,3 @@
-'''===========================================================================
-29-Sep-2015    edgar.zamora    Initial implementation.
-02-Mar-2016    josep.sampe     Code refactor, New functionalities
-21-Mar-2016    josep.sampe     Improved performance
-31-May-2016    josep.sampe     Storlet middleware -> Crystal filter middleware
-==========================================================================='''
 from swift.proxy.controllers.base import get_account_info
 from swift.common.swob import HTTPInternalServerError
 from swift.common.swob import HTTPException
@@ -16,10 +10,7 @@ import ConfigParser
 import mimetypes
 import redis
 import json
-import eventlet
 
-from threading import Thread
-import os
 
 class NotSDSFilterRequest(Exception):
     pass
@@ -190,12 +181,6 @@ class BaseSDSFilterHandler(object):
             self.request.environ.pop('CONTENT_LENGTH')
         self.request.headers['Transfer-Encoding'] = 'chunked'
         
-    def _copy_pipe(self, reader, writer):
-        for chunk in iter(lambda: reader.next(), ''):
-            writer.write(chunk)   
-        reader.close()
-        writer.close()
-
 
 class SDSFilterProxyHandler(BaseSDSFilterHandler):
 
@@ -343,19 +328,7 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
                              'from object server')
             filter_exec_list = json.loads(resp.headers.pop('CRYSTAL-FILTERS'))
             resp = self.apply_filters_on_get(resp, filter_exec_list)
-            """
-            # ---------------------
-            r, w = os.pipe()
-            out_reader = os.fdopen(r,'r')
-            write_pipe = os.fdopen(w,'w')
-            app_iter = resp.app_iter
-            eventlet.spawn_n(self._copy_pipe,app_iter,write_pipe)
-            #th = Thread(target=self._copy_pipe,args=(app_iter,write_pipe))
-            #th.daemon = True
-            #th.start()
-            resp.app_iter = out_reader
-            # ---------------------
-            """
+
         return resp
 
     def PUT(self):
@@ -468,17 +441,6 @@ class SDSFilterObjectHandler(BaseSDSFilterHandler):
             
             if filter_exec_list:
                 resp = self.apply_filters_on_get(resp, filter_exec_list)
-                """
-                # ---------------------
-                r, w = os.pipe()
-                out_reader = os.fdopen(r,'r')
-                write_pipe = os.fdopen(w,'w')
-                app_iter = resp.app_iter
-                #resp.app_iter.closed = True
-                Thread(target=self._copy_pipe,args=(app_iter,write_pipe)).start()
-                resp.app_iter = out_reader
-                # ---------------------
-                """
             
         return resp
                
