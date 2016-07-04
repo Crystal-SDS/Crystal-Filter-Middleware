@@ -284,7 +284,7 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
                 # Check conditions
                 if filter_metadata["is_" + self.method]:
                     if self.check_size_type(filter_metadata):
-                        filter_name = filter_metadata['name']
+                        filter_name = filter_metadata['filter_name']
                         server = filter_metadata["execution_server"]
                         reverse = filter_metadata["execution_server_reverse"]
                         params = filter_metadata["params"]
