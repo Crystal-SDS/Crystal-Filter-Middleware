@@ -56,6 +56,7 @@ class CrystalFilterControl(object):
             server = filter_data["execution_server"]            
             if server == self.server:
                 if filter_data['type'] == 'storlet':
+                    """ Storlet Execution """
                     if not storlet_gw:
                         storlet_gw = self._setup_storlet_gateway(self.conf, 
                                                                  self.logger, 
@@ -67,6 +68,7 @@ class CrystalFilterControl(object):
                     filter_executed = True
 
                 else:
+                    """ Native Filter execution """
                     self.logger.info('Crystal Filters - Go to execute native '
                                      'Filter: '+ filter_data['main'])
                     native_filter = self._load_native_filter(filter_data)

@@ -289,7 +289,7 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
                         reverse = filter_metadata["execution_server_reverse"]
                         params = filter_metadata["params"]
                         filter_id = filter_metadata["filter_id"]
-                        filter_type = 'storlet' #filter_metadata["filter_type"]
+                        filter_type = 'native' #filter_metadata["filter_type"]
                         filter_main = filter_metadata["main"]
                         filter_dependencies = filter_metadata["dependencies"]
                         filter_size = filter_metadata["content_length"]
@@ -390,10 +390,10 @@ class SDSFilterObjectHandler(BaseSDSFilterHandler):
             # return HTTPMethodNotAllowed(request=self.request)
          
     def _augment_filter_execution_list(self, filter_list):
-        new_storlet_list = {}        
+        new_storlet_list = {}
     
         # REVERSE EXECUTION
-        if filter_list:            
+        if filter_list:
             for key in reversed(sorted(filter_list)):
                 launch_key = len(new_storlet_list.keys())
                 new_storlet_list[launch_key] = filter_list[key]
@@ -401,11 +401,10 @@ class SDSFilterObjectHandler(BaseSDSFilterHandler):
         # Get filter list to execute from proxy
         if 'CRYSTAL-FILTERS' in self.request.headers:
             req_filter_list = json.loads(self.request.headers.pop('CRYSTAL-FILTERS'))
-
-            for key in sorted(req_filter_list):
+            for key in sorted(req_filter_list, reverse=True):
                 launch_key = len(new_storlet_list.keys())
                 new_storlet_list[launch_key] = req_filter_list[key]
-        
+
         return new_storlet_list
 
     def _set_crystal_metadata(self):
