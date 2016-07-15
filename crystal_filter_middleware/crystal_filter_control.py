@@ -48,7 +48,7 @@ class CrystalFilterControl(object):
         
         on_other_server = dict()
         filter_executed = False
-        storlet_gw = None
+        storlet_filter = None
         data_iter = None
         
         for key in sorted(filter_exec_list):
@@ -56,25 +56,28 @@ class CrystalFilterControl(object):
             server = filter_data["execution_server"]            
             if server == self.server:
                 if filter_data['type'] == 'storlet':
-                    """ Storlet Execution """
-                    if not storlet_gw:
-                        storlet_gw = self._setup_storlet_gateway(self.conf, 
-                                                                 self.logger, 
-                                                                 requets_data)
+                    """ Storlet Filter Execution """
+                    if not storlet_filter:
+                        storlet_filter = self._setup_storlet_gateway(self.conf,
+                                                                     self.logger, 
+                                                                     requets_data)
 
-                    data_iter = storlet_gw.execute_storlet(req_resp,
-                                                          filter_data,
-                                                          data_iter)
+                    data_iter = storlet_filter.execute(req_resp,
+                                                       filter_data,
+                                                       data_iter)
                     filter_executed = True
 
                 else:
                     """ Native Filter execution """
                     self.logger.info('Crystal Filters - Go to execute native '
                                      'Filter: '+ filter_data['main'])
+                    
                     native_filter = self._load_native_filter(filter_data)
                     data_iter = native_filter.execute(req_resp, data_iter, 
                                                      requets_data)
+                    
                     filter_executed = True
+                    
                     
             else:
                 on_other_server[key] = filter_exec_list[key]
