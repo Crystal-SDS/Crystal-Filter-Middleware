@@ -280,7 +280,7 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
         if self.filter_list:
             for _, filter_metadata in self.filter_list.items():            
                 filter_metadata = json.loads(filter_metadata)
-      
+                
                 # Check conditions
                 if filter_metadata["is_" + self.method]:
                     if self.check_size_type(filter_metadata):
@@ -289,7 +289,7 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
                         reverse = filter_metadata["execution_server_reverse"]
                         params = filter_metadata["params"]
                         filter_id = filter_metadata["filter_id"]
-                        filter_type = 'native' #filter_metadata["filter_type"]
+                        filter_type = filter_metadata["filter_type"]
                         filter_main = filter_metadata["main"]
                         filter_dependencies = filter_metadata["dependencies"]
                         filter_size = filter_metadata["content_length"]
@@ -320,9 +320,11 @@ class SDSFilterProxyHandler(BaseSDSFilterHandler):
             self.app.logger.info('Crystal Filters - There are Filters to execute')
             filter_exec_list = self._build_filter_execution_list()
             self.request.headers['CRYSTAL-FILTERS'] = json.dumps(filter_exec_list)
-
-        resp = self.request.get_response(self.app)
+            
+        # TODO(josep): cache filter should be applied here
         
+        resp = self.request.get_response(self.app)
+         
         if 'CRYSTAL-FILTERS' in resp.headers:
             self.logger.info('Crystal Filters - There are filters to execute '
                              'from object server')
@@ -538,14 +540,28 @@ def filter_factory(global_conf, **local_conf):
 
     crystal_conf['storlet_timeout'] = conf.get('storlet_timeout', 40)
     crystal_conf['storlet_container'] = conf.get('storlet_container',
-                                             'storlet')
+                                                 'storlet')
     crystal_conf['storlet_dependency'] = conf.get('storlet_dependency',
-                                              'dependency')
+                                                  'dependency')
+    crystal_conf['storlet_gateway_module'] = conf.get('storlet_gateway_module')
+    crystal_conf['storlet_execute_on_proxy_only'] = \
+        config_true_value(conf.get('storlet_execute_on_proxy_only', 'false'))
+        
     crystal_conf['reseller_prefix'] = conf.get('reseller_prefix', 'AUTH')  
     crystal_conf['bind_ip'] = conf.get('bind_ip')
     crystal_conf['bind_port'] = conf.get('bind_port')
 
 
+    """ Load Storlets Gateway class """
+    module_name = conf.get('storlet_gateway_module', '')
+    
+    mo = module_name[:module_name.rfind(':')]
+    cl = module_name[module_name.rfind(':') + 1:]    
+    module = __import__(mo, fromlist=[cl])
+    the_class = getattr(module, cl)
+    crystal_conf["storlets_gateway_module"] = the_class                    
+
+    """ Load Storlets Gateway configuration """
     configParser = ConfigParser.RawConfigParser()
     configParser.read(conf.get('storlet_gateway_conf',
                                '/etc/swift/storlet_docker_gateway.conf'))
@@ -554,7 +570,8 @@ def filter_factory(global_conf, **local_conf):
     for key, val in additional_items:
         crystal_conf[key] = val
 
-    def swift_sds_storlets(app):
+
+    def crystal_filter_handler(app):
         return SDSFilterHandlerMiddleware(app, conf, crystal_conf)
 
-    return swift_sds_storlets
+    return crystal_filter_handler

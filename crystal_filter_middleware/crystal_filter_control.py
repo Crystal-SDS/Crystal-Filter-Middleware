@@ -49,7 +49,7 @@ class CrystalFilterControl(object):
         on_other_server = dict()
         filter_executed = False
         storlet_gw = None
-        app_iter = None
+        data_iter = None
         
         for key in sorted(filter_exec_list):
             filter_data = filter_exec_list[key]            
@@ -62,9 +62,9 @@ class CrystalFilterControl(object):
                                                                  self.logger, 
                                                                  requets_data)
 
-                    app_iter = storlet_gw.execute_storlet(req_resp,
+                    data_iter = storlet_gw.execute_storlet(req_resp,
                                                           filter_data,
-                                                          app_iter)
+                                                          data_iter)
                     filter_executed = True
 
                 else:
@@ -72,7 +72,7 @@ class CrystalFilterControl(object):
                     self.logger.info('Crystal Filters - Go to execute native '
                                      'Filter: '+ filter_data['main'])
                     native_filter = self._load_native_filter(filter_data)
-                    app_iter = native_filter.execute(req_resp, app_iter, 
+                    data_iter = native_filter.execute(req_resp, data_iter, 
                                                      requets_data)
                     filter_executed = True
                     
@@ -84,8 +84,8 @@ class CrystalFilterControl(object):
         
         if filter_executed:
             if isinstance(req_resp, Request):
-                req_resp.environ['wsgi.input'] = app_iter
+                req_resp.environ['wsgi.input'] = data_iter
             else:
-                req_resp.app_iter = app_iter
+                req_resp.app_iter = data_iter
            
         return req_resp
