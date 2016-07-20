@@ -1,5 +1,6 @@
 from swift.common.swob import Request
 
+
 class SDSGatewayStorlet():
 
     def __init__(self, conf, logger, request_data):
@@ -31,7 +32,8 @@ class SDSGatewayStorlet():
         """ Simulate Storlet request """
         new_env = dict(req_resp.environ)
         req = Request.blank(new_env['PATH_INFO'], new_env)
-        
+
+        # TODO(josep): check X-Storlet-Range header
         req.headers['X-Run-Storlet'] = self.storlet_name
         req.headers['X-Storlet-Main'] = self.storlet_metadata['main']
         req.headers['X-Storlet-Dependency'] = self.storlet_metadata['dependencies']
@@ -42,17 +44,17 @@ class SDSGatewayStorlet():
 
         return req
 
-    def _launch_storlet(self, req_resp, params, crystal_input_data=None):
+    def _launch_storlet(self, req_resp, params, crystal_iter):
         req = self.set_storlet_request(req_resp, params)
 
         if self.method == 'put':
-            sresp = self.gateway_method(req, crystal_input_data)
+            sresp = self.gateway_method(req, crystal_iter)
         elif self.method == 'get':
-            sresp = self.gateway_method(req, req_resp, crystal_input_data)
+            sresp = self.gateway_method(req, req_resp, crystal_iter)
         # TODO(josep): Other methods
         return sresp.data_iter
 
-    def execute(self, req_resp, storlet_data, crystal_input_data):
+    def execute(self, req_resp, storlet_data, crystal_iter):
         storlet = storlet_data['name']
         params = storlet_data['params']
         self.storlet_name = storlet
@@ -61,6 +63,6 @@ class SDSGatewayStorlet():
         self.logger.info('Crystal Filters - Go to execute ' + storlet +
                          ' storlet with parameters "' + params + '"')
                 
-        data_iter = self._launch_storlet(req_resp, params, crystal_input_data)
+        data_iter = self._launch_storlet(req_resp, params, crystal_iter)
         
         return data_iter

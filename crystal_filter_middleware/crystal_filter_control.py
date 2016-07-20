@@ -49,7 +49,7 @@ class CrystalFilterControl(object):
         on_other_server = dict()
         filter_executed = False
         storlet_filter = None
-        data_iter = None
+        crystal_iter = None
         
         for key in sorted(filter_exec_list):
             filter_data = filter_exec_list[key]            
@@ -62,9 +62,9 @@ class CrystalFilterControl(object):
                                                                      self.logger, 
                                                                      requets_data)
 
-                    data_iter = storlet_filter.execute(req_resp,
-                                                       filter_data,
-                                                       data_iter)
+                    crystal_iter = storlet_filter.execute(req_resp,
+                                                          filter_data,
+                                                          crystal_iter)
                     filter_executed = True
 
                 else:
@@ -73,8 +73,8 @@ class CrystalFilterControl(object):
                                      'Filter: '+ filter_data['main'])
                     
                     native_filter = self._load_native_filter(filter_data)
-                    data_iter = native_filter.execute(req_resp, data_iter, 
-                                                     requets_data)
+                    crystal_iter = native_filter.execute(req_resp, crystal_iter,
+                                                         requets_data)
                     
                     filter_executed = True
                     
@@ -87,8 +87,8 @@ class CrystalFilterControl(object):
         
         if filter_executed:
             if isinstance(req_resp, Request):
-                req_resp.environ['wsgi.input'] = data_iter
+                req_resp.environ['wsgi.input'] = crystal_iter
             else:
-                req_resp.app_iter = data_iter
+                req_resp.app_iter = crystal_iter
            
         return req_resp
