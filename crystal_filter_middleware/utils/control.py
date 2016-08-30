@@ -1,4 +1,4 @@
-import crystal_filter_storlet_gateway as storlet_gateway
+from crystal_filter_middleware.gateways import storlet_gateway
 from swift.common.swob import Request
 import json
 

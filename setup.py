@@ -4,7 +4,7 @@ paste_factory = ['crystal_filter_handler = '
                  'crystal_filter_middleware.crystal_filter_handler:filter_factory']
 
 setup(name='swift_crystal_filter_middleware',
-      version='0.0.4',
+      version='0.0.5',
       description='Crystal filter middleware for OpenStack Swift',
       author='The AST-IOStack Team: Josep Sampe, Raul Gracia',
       url='http://iostack.eu',

@@ -1,6 +1,3 @@
-'''===========================================================================
-19-Oct-2015    josep.sampe    Initial implementation.
-==========================================================================='''
 from swift.common.exceptions import DiskFileNotExist
 from swift.common.exceptions import DiskFileXattrNotSupported
 from swift.common.exceptions import DiskFileNoSpace

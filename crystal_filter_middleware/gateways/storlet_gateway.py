@@ -20,7 +20,7 @@ class SDSGatewayStorlet():
         self.gateway_docker = None
         self.gateway_method = None
 
-    def set_storlet_request(self, req_resp, params):
+    def _set_storlet_request(self, req_resp, params):
 
         self.gateway_docker = self.gateway_module(self.conf, self.logger, 
                                                   self.app, self.account)
@@ -45,7 +45,7 @@ class SDSGatewayStorlet():
         return req
 
     def _launch_storlet(self, req_resp, params, crystal_iter):
-        req = self.set_storlet_request(req_resp, params)
+        req = self._set_storlet_request(req_resp, params)
 
         if self.method == 'put':
             sresp = self.gateway_method(req, crystal_iter)
