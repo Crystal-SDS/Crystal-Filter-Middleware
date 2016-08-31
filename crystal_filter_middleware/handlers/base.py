@@ -48,18 +48,17 @@ class CrystalBaseHandler(object):
         self.logger = logger
         self.conf = conf
         self.filter_control = filter_control
-        
+
         self.redis_host = conf.get('redis_host')
         self.redis_port = conf.get('redis_port')
         self.redis_db = conf.get('redis_db')
         self.cache = conf.get('cache')
-        
+
         self.method = self.request.method.lower()
-        
-        self.redis = redis.StrictRedis(self.redis_host, 
-                                                  self.redis_port, 
-                                                  self.redis_db)
-        
+
+        self.redis = redis.StrictRedis(self.redis_host,
+                                       self.redis_port,
+                                       self.redis_db)
 
     def _extract_vaco(self):
         """
@@ -86,6 +85,11 @@ class CrystalBaseHandler(object):
     @property
     def obj(self):
         return self._obj
+
+    @property
+    def is_crystal_object_put(self):
+        return (self.container in self.sds_containers and self.obj and
+                self.request.method == 'PUT')
 
     def _parse_vaco(self):
         """
@@ -138,7 +142,7 @@ class CrystalBaseHandler(object):
                                             'False')
 
         if not config_true_value(storlets_enabled):
-            return True # TODO: CHANGE TO FALSE
+            return True  # TODO: CHANGE TO FALSE
 
         return True
 
@@ -147,9 +151,9 @@ class CrystalBaseHandler(object):
         Call gateway module to get result of filter execution
         in PUT flow
         """
-        return self.filter_control.execute_filters(self.request, filter_list, 
-                                                   self.app, self._api_version, 
-                                                   self.account, self.container, 
+        return self.filter_control.execute_filters(self.request, filter_list,
+                                                   self.app, self._api_version,
+                                                   self.account, self.container,
                                                    self.obj, self.method)
 
     def _call_filter_control_on_get(self, resp, filter_list):
@@ -157,9 +161,9 @@ class CrystalBaseHandler(object):
         Call gateway module to get result of filter execution
         in GET flow
         """
-        return self.filter_control.execute_filters(resp, filter_list, 
-                                                   self.app, self._api_version, 
-                                                   self.account, self.container, 
+        return self.filter_control.execute_filters(resp, filter_list,
+                                                   self.app, self._api_version,
+                                                   self.account, self.container,
                                                    self.obj, self.method)
 
     def apply_filters_on_get(self, resp, filter_list):

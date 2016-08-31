@@ -9,6 +9,6 @@ setup(name='swift_crystal_filter_middleware',
       author='The AST-IOStack Team: Josep Sampe, Raul Gracia',
       url='http://iostack.eu',
       packages=find_packages(),
-      requires=['swift(>=1.4)','storlets(>=1.0)'],
-      entry_points={'paste.filter_factory':paste_factory}
+      requires=['swift(>=1.4)', 'storlets(>=1.0)'],
+      entry_points={'paste.filter_factory': paste_factory}
       )

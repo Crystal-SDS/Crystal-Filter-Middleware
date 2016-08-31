@@ -1,7 +1,7 @@
 from swift.common.swob import Request
 
 
-class SDSGatewayStorlet():
+class CrystalGatewayStorlet():
 
     def __init__(self, conf, logger, request_data):
         self.conf = conf
@@ -13,7 +13,7 @@ class SDSGatewayStorlet():
         self.obj = request_data['object']
         self.method = request_data['method']
         self.server = self.conf['execution_server']
-        
+
         self.storlet_metadata = None
         self.storlet_name = None
         self.gateway_module = self.conf['storlets_gateway_module']
@@ -22,12 +22,12 @@ class SDSGatewayStorlet():
 
     def _set_storlet_request(self, req_resp, params):
 
-        self.gateway_docker = self.gateway_module(self.conf, self.logger, 
+        self.gateway_docker = self.gateway_module(self.conf, self.logger,
                                                   self.app, self.account)
-        
+
         self.gateway_method = getattr(self.gateway_docker, "gateway" +
                                       self.server.title() +
-                                      self.method.title() + "Flow") 
+                                      self.method.title() + "Flow")
 
         """ Simulate Storlet request """
         new_env = dict(req_resp.environ)
@@ -38,7 +38,8 @@ class SDSGatewayStorlet():
         req.headers['X-Storlet-Main'] = self.storlet_metadata['main']
         req.headers['X-Storlet-Dependency'] = self.storlet_metadata['dependencies']
         req.headers['X-Storlet-Content-Length'] = self.storlet_metadata['size']
-        req.headers['X-Storlet-X-Timestamp'] = 0  # TODO(josep): Change to correct timestamp
+        # TODO(josep): Change to correct timestamp
+        req.headers['X-Storlet-X-Timestamp'] = 0
 
         req.environ['QUERY_STRING'] = params.replace(',', '&')
 
@@ -62,7 +63,7 @@ class SDSGatewayStorlet():
 
         self.logger.info('Crystal Filters - Go to execute ' + storlet +
                          ' storlet with parameters "' + params + '"')
-                
+
         data_iter = self._launch_storlet(req_resp, params, crystal_iter)
-        
+
         return data_iter
