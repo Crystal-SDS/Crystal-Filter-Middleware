@@ -1,9 +1,13 @@
 from crystal_filter_middleware.handlers import CrystalBaseHandler
-from crystal_filter_middleware.utils.common import mappings
 from swift.common.swob import HTTPMethodNotAllowed
 from swift.common.utils import public
 import mimetypes
+import operator
 import json
+
+mappings = {'>': operator.gt, '>=': operator.ge,
+            '==': operator.eq, '<=': operator.le, '<': operator.lt,
+            '!=': operator.ne, "OR": operator.or_, "AND": operator.and_}
 
 
 class CrystalProxyHandler(CrystalBaseHandler):

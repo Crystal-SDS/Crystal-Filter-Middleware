@@ -1,5 +1,4 @@
 from crystal_filter_middleware.handlers import CrystalBaseHandler
-from crystal_filter_middleware.utils.common import get_metadata, put_metadata
 from swift.common.swob import HTTPMethodNotAllowed
 from swift.common.utils import public
 import json
@@ -58,30 +57,41 @@ class CrystalObjectHandler(CrystalBaseHandler):
 
         return new_storlet_list
 
-    def _get_crystal_metadata(self):
+    def _format_crystal_metadata(self, crystal_md):
+        for key in crystal_md["filter-exec-list"].keys():
+            cfilter = crystal_md["filter-exec-list"][key]
+            if cfilter['type'] != 'global' and cfilter['has_reverse']:
+                current_params = cfilter['params']
+                if current_params:
+                    cfilter['params'] = current_params+','+'reverse=True'
+                else:
+                    cfilter['params'] = 'reverse=True'
+    
+                cfilter['execution_server'] = cfilter['execution_server_reverse']
+                cfilter.pop('execution_server_reverse')
+            else:
+                crystal_md["filter-exec-list"].pop(key)
+    
+        print crystal_md
+        return crystal_md
+
+    def _set_crystal_metadata(self):
         crystal_md = {}
         filter_exec_list = json.loads(self.request.headers['Filter-Executed-List'])
         crystal_md["original-etag"] = self.request.headers['Original-Etag']
         crystal_md["original-size"] = self.request.headers['Original-Size']
         crystal_md["filter-exec-list"] = filter_exec_list
-
-        return crystal_md
+        self.request.headers['X-Object-Sysmeta-Crystal'] = self._format_crystal_metadata(crystal_md)
 
     @public
     def GET(self):
         """
         GET handler on Object
-        If orig_resp is GET we will need to:
-        - Take the object metadata info
-        - Execute the storlets described in the metadata info
-        - Execute the storlets described in redis
-        - Return the result
         """
-
         resp = self.request.get_response(self.app)
 
-        if (resp.status_int == 200 or resp.status_int == 201):
-            crystal_md = get_metadata(resp)
+        if 'X-Object-Sysmeta-Crystal' in resp.headers:
+            crystal_md = json.loads(resp.headers['X-Object-Sysmeta-Crystal'])
             
             if crystal_md:
                 resp.headers['ETag'] = crystal_md['original-etag']
@@ -107,20 +117,10 @@ class CrystalObjectHandler(CrystalBaseHandler):
             filter_list = json.loads(self.request.headers['CRYSTAL-FILTERS'])
             self.apply_filters_on_put(filter_list)
         
+        self._set_crystal_metadata()
         original_resp = self.request.get_response(self.app)
-        
-        # 'Storlet-List' header is the list of all Storlets executed, both 
-        # on Proxy and on Object servers. It is necessary to save the list 
-        # in the extended metadata of the object for run reverse-Storlet on 
-        # GET requests.
-        if 'Filter-Executed-List' in self.request.headers:
-            crystal_metadata = self._get_crystal_metadata()
-            if not put_metadata(self.app, self.request, crystal_metadata):
-                self.app.logger.error('Crystal Filters - Error writing'
-                                      'metadata in an object')
-                # TODO: Rise exception writting metadata
-            # We need to restore the original ETAG to avoid checksum 
-            # verification of Swift clients
-            original_resp.headers['ETag'] = crystal_metadata['original-etag']
+        # We need to restore the original ETAG to avoid checksum 
+        # verification of Swift clients
+        original_resp.headers['ETag'] = self.request.headers['Original-Etag']
                 
         return original_resp
