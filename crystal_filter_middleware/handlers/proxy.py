@@ -16,19 +16,16 @@ class CrystalProxyHandler(CrystalBaseHandler):
         super(CrystalProxyHandler, self).__init__(request, conf,
                                                   app, logger,
                                                   filter_control)
-
+        self.etag = ''
         # Dynamic binding of policies
-        account_key_list = self.redis.keys(
-            "pipeline:" + str(self.account) + "*")
+        account_key_list = self.redis.keys("pipeline:" + str(self.account) + "*")
         self.global_filters = self.redis.hgetall('global_filters')
-
         self.filter_list = None
         key = self.account + "/" + self.container + "/" + self.obj
         for target in range(3):
             self.target_key = key.rsplit("/", target)[0]
             if 'pipeline:' + self.target_key in account_key_list:
-                self.filter_list = self.redis.hgetall(
-                    'pipeline:' + self.target_key)
+                self.filter_list = self.redis.hgetall('pipeline:' + self.target_key)
                 break
 
     def _parse_vaco(self):
@@ -136,6 +133,31 @@ class CrystalProxyHandler(CrystalBaseHandler):
                         filter_execution_list[launch_key] = filter_execution
 
         return filter_execution_list
+    
+    def _format_crystal_metadata(self, crystal_md):
+        for key in crystal_md["filter-list"].keys():
+            cfilter = crystal_md["filter-list"][key]
+            if cfilter['type'] != 'global' and cfilter['has_reverse']:
+                current_params = cfilter['params']
+                if current_params:
+                    cfilter['params'] = current_params + ',' + 'reverse=True'
+                else:
+                    cfilter['params'] = 'reverse=True'
+
+                cfilter['execution_server'] = cfilter['execution_server_reverse']
+                cfilter.pop('execution_server_reverse')
+            else:
+                crystal_md["filter-list"].pop(key)
+
+        return crystal_md
+    
+    def _set_crystal_metadata(self, filter_exec_list):
+        crystal_md = {}
+        crystal_md["original-etag"] = self.request.headers.get('ETag', '')
+        crystal_md["original-size"] = self.request.headers.get('Content-Length', '')
+        crystal_md["filter-list"] = filter_exec_list
+        cmd = self._format_crystal_metadata(crystal_md)
+        self.request.headers['X-Object-Sysmeta-Crystal'] = cmd
 
     @public
     def GET(self):
@@ -144,23 +166,21 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
 
         if self.global_filters or self.filter_list:
-            self.app.logger.info(
-                'Crystal Filters - There are Filters to execute')
+            self.app.logger.info('Crystal Filters - There are Filters to execute')
             filter_exec_list = self._build_filter_execution_list()
-            self.request.headers[
-                'CRYSTAL-FILTERS'] = json.dumps(filter_exec_list)
+            self.request.headers['crystal/filters'] = json.dumps(filter_exec_list)
 
         # TODO(josep): cache filter should be applied here PRE-GET
 
-        resp = self.request.get_response(self.app)
+        response = self.request.get_response(self.app)
 
-        if 'CRYSTAL-FILTERS' in resp.headers:
-            self.logger.info('Crystal Filters - There are filters to execute '
-                             'from object server')
-            filter_exec_list = json.loads(resp.headers.pop('CRYSTAL-FILTERS'))
-            resp = self.apply_filters_on_get(resp, filter_exec_list)
+        if 'crystal/filters' in response.headers:
+            self.logger.info('Crystal Filters - There are filters to execute'
+                             ' from object server')
+            filter_exec_list = eval(response.headers.pop('crystal/filters'))
+            response = self.apply_filters_on_get(response, filter_exec_list)
 
-        return resp
+        return response
 
     @public
     def PUT(self):
@@ -168,25 +188,20 @@ class CrystalProxyHandler(CrystalBaseHandler):
         PUT handler on Proxy
         """
         if self.global_filters or self.filter_list:
-            self.app.logger.info(
-                'Crystal Filters - There are Filters to execute')
+            self.logger.info('Crystal Filters - There are Filters to execute')
             filter_exec_list = self._build_filter_execution_list()
             if filter_exec_list:
-                self.request.headers['Filter-Executed-List'] = json.dumps(filter_exec_list)
-                self.request.headers['Original-Size'] = self.request.headers.get('Content-Length', '')
-                self.request.headers['Original-Etag'] = self.request.headers.get('ETag', '')
-
+                self._set_crystal_metadata(filter_exec_list)
                 if 'ETag' in self.request.headers:
                     # The object goes to be modified by some Storlet, so we
                     # delete the Etag from request headers to prevent checksum
                     # verification.
-                    self.request.headers.pop('ETag')
-
+                    self.etag = self.request.headers.pop('ETag')
                 self.apply_filters_on_put(filter_exec_list)
-
-            else:
-                self.logger.info('Crystal Filters - No filters to execute')
-        else:
+        else:   
             self.logger.info('Crystal Filters - No filters to execute')
-
-        return self.request.get_response(self.app)
+      
+        response = self.request.get_response(self.app)
+        response.headers['ETag'] = self.etag
+        
+        return response
