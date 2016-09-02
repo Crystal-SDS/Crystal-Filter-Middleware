@@ -67,13 +67,15 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         response = self.request.get_response(self.app)
         
+        filter_list = None
         if 'X-Object-Sysmeta-Crystal' in response.headers:
             crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
             response.headers['ETag'] = crystal_md['original-etag']
             response.headers['Content-Length'] = crystal_md['original-size']
-            filter_list = crystal_md.get('filter-list', None)
-            filter_exec_list = self._augment_filter_execution_list(filter_list)
-            response = self.apply_filters_on_get(response, filter_exec_list)
+            filter_list = crystal_md.get('filter-list')
+            
+        filter_exec_list = self._augment_filter_execution_list(filter_list)
+        response = self.apply_filters_on_post_get(response, filter_exec_list)
             
         return response
 
@@ -87,6 +89,6 @@ class CrystalObjectHandler(CrystalBaseHandler):
         if 'crystal/filters' in self.request.headers:
             self.logger.info('Crystal Filters - There are filters to execute')
             filter_list = json.loads(self.request.headers['crystal/filters'])
-            self.apply_filters_on_put(filter_list)
+            self.apply_filters_on_pre_put(filter_list)
 
         return self.request.get_response(self.app)

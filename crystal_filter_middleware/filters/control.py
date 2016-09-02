@@ -27,7 +27,7 @@ class CrystalFilterControl(object):
 
     def _load_native_filter(self, filter_data):
         (modulename, classname) = filter_data['main'].rsplit('.', 1)
-        m = __import__(PACKAGE_NAME + '.' + modulename, globals(),
+        m = __import__(PACKAGE_NAME + '.filters.' + modulename, globals(),
                        locals(), [classname])
         m_class = getattr(m, classname)
         metric_class = m_class(filter_conf=filter_data,
@@ -70,8 +70,8 @@ class CrystalFilterControl(object):
 
                 else:
                     """ Native Filter execution """
-                    self.logger.info('Crystal Filters - Go to execute native '
-                                     'Filter: ' + filter_data['main'])
+                    self.logger.info('Crystal Filters - Go to execute native'
+                                     ' filter: ' + filter_data['main'])
 
                     native_filter = self._load_native_filter(filter_data)
                     crystal_iter = native_filter.execute(req_resp, crystal_iter,
@@ -83,7 +83,7 @@ class CrystalFilterControl(object):
                 on_other_server[key] = filter_exec_list[key]
 
         if on_other_server:
-            req_resp.headers['CRYSTAL-FILTERS'] = json.dumps(on_other_server)
+            req_resp.headers['crystal/filters'] = json.dumps(on_other_server)
 
         if filter_executed:
             if isinstance(req_resp, Request):

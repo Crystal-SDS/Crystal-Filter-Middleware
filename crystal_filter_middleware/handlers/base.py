@@ -1,5 +1,6 @@
 from swift.proxy.controllers.base import get_account_info
 from swift.common.utils import config_true_value
+from copy import deepcopy
 import redis
 
 
@@ -142,7 +143,7 @@ class CrystalBaseHandler(object):
                                             'False')
 
         if not config_true_value(storlets_enabled):
-            return True  # TODO: CHANGE TO FALSE
+            return False
 
         return True
 
@@ -156,22 +157,48 @@ class CrystalBaseHandler(object):
                                                    self.account, self.container,
                                                    self.obj, self.method)
 
-    def _call_filter_control_on_get(self, resp, filter_list):
+    def _call_filter_control_on_get(self, req_resp, filter_list):
         """
         Call gateway module to get result of filter execution
         in GET flow
         """
-        return self.filter_control.execute_filters(resp, filter_list,
+        return self.filter_control.execute_filters(req_resp, filter_list,
                                                    self.app, self._api_version,
                                                    self.account, self.container,
                                                    self.obj, self.method)
 
-    def apply_filters_on_get(self, resp, filter_list):
-        return self._call_filter_control_on_get(resp, filter_list)
+    def apply_filters_on_pre_get(self, filter_list):
+        filtered_filter_list = dict()
+        for key, filter_data in filter_list.items():
+            if filter_data['when'] == 'on_pre_get':
+                filtered_filter_list[key] = filter_data
+                
+        if filtered_filter_list:
+            self.logger.info('Crystal Filters - Go to execute filters on PRE-GET: '+ str(filtered_filter_list))
+            self._call_filter_control_on_get(self.request, filtered_filter_list)
 
-    def apply_filters_on_put(self, filter_list):
-        self.request = self._call_filter_control_on_put(filter_list)
-
-        if 'CONTENT_LENGTH' in self.request.environ:
-            self.request.environ.pop('CONTENT_LENGTH')
-        self.request.headers['Transfer-Encoding'] = 'chunked'
+    def apply_filters_on_post_get(self, resp, filter_list): 
+        filtered_filter_list = dict()
+        for key, filter_data in filter_list.items():
+            if filter_data['when'] == 'on_post_get':
+                filtered_filter_list[key] = filter_data
+                
+        if filtered_filter_list:
+            self.logger.info('Crystal Filters - Go to execute filters on POST-GET: '+ str(filtered_filter_list))
+            resp = self._call_filter_control_on_get(resp, filtered_filter_list)
+   
+        return resp
+   
+    def apply_filters_on_pre_put(self, filter_list):
+        filtered_filter_list = dict()
+        for key, filter_data in filter_list.items():
+            if filter_data['when'] == 'on_pre_put':
+                filtered_filter_list[key] = filter_data
+        
+        if filtered_filter_list:
+            self.logger.info('Crystal Filters - Go to execute filters on PRE-PUT: '+ str(filtered_filter_list))
+            self.request = self._call_filter_control_on_put(filtered_filter_list)
+    
+            if 'CONTENT_LENGTH' in self.request.environ:
+                self.request.environ.pop('CONTENT_LENGTH')
+            self.request.headers['Transfer-Encoding'] = 'chunked'
