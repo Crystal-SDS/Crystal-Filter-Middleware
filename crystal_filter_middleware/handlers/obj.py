@@ -66,7 +66,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
         GET handler on Object
         """
         response = self.request.get_response(self.app)
-        
+  
         filter_list = None
         if 'X-Object-Sysmeta-Crystal' in response.headers:
             crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
@@ -85,7 +85,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
         PUT handler on Object Server
         """
         # IF 'crystal/filters' is in headers, means that is needed to run a
-        # Filter on Object Server before store the object.
+        # Filter on Object Server before store the object.        
         if 'crystal/filters' in self.request.headers:
             self.logger.info('Crystal Filters - There are filters to execute')
             filter_list = json.loads(self.request.headers['crystal/filters'])

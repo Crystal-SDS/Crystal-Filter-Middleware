@@ -80,6 +80,9 @@ def filter_factory(global_conf, **local_conf):
                                                  'storlet')
     crystal_conf['storlet_dependency'] = conf.get('storlet_dependency',
                                                   'dependency')
+    crystal_conf['storlet_logcontainer'] = conf.get('storlet_logcontainer',
+                                                  'storletlog')
+    
     crystal_conf['storlet_gateway_module'] = conf.get('storlet_gateway_module')
     crystal_conf['storlet_execute_on_proxy_only'] = \
         config_true_value(conf.get('storlet_execute_on_proxy_only', 'false'))

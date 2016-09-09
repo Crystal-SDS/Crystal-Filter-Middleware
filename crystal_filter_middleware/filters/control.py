@@ -50,7 +50,14 @@ class CrystalFilterControl(object):
         on_other_server = dict()
         filter_executed = False
         storlet_filter = None
-        crystal_iter = None
+        
+        if isinstance(req_resp, Request):
+            reader = req_resp.environ['wsgi.input'].read
+            crystal_iter = iter(lambda: reader(65536), '')
+        else:
+            crystal_iter = req_resp.app_iter
+        
+        #crystal_iter = None
 
         for key in sorted(filter_exec_list):
             filter_data = filter_exec_list[key]

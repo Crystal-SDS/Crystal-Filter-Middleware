@@ -1,6 +1,5 @@
 from swift.proxy.controllers.base import get_account_info
 from swift.common.utils import config_true_value
-from copy import deepcopy
 import redis
 
 
@@ -44,7 +43,8 @@ class CrystalBaseHandler(object):
         self.request = request
         self.server = conf.get('execution_server')
         self.sds_containers = [conf.get('storlet_container'),
-                               conf.get('storlet_dependency')]
+                               conf.get('storlet_dependency'),
+                               conf.get('storlet_images','docker_images')]
         self.app = app
         self.logger = logger
         self.conf = conf
@@ -91,7 +91,7 @@ class CrystalBaseHandler(object):
     def is_crystal_object_put(self):
         return (self.container in self.sds_containers and self.obj and
                 self.request.method == 'PUT')
-
+    
     def _parse_vaco(self):
         """
         Parse method of path from self.request which depends on child class
@@ -177,7 +177,7 @@ class CrystalBaseHandler(object):
             self.logger.info('Crystal Filters - Go to execute filters on PRE-GET: '+ str(filtered_filter_list))
             self._call_filter_control_on_get(self.request, filtered_filter_list)
 
-    def apply_filters_on_post_get(self, resp, filter_list): 
+    def apply_filters_on_post_get(self, resp, filter_list):
         filtered_filter_list = dict()
         for key, filter_data in filter_list.items():
             if filter_data['when'] == 'on_post_get':
