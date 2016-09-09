@@ -89,16 +89,18 @@ class CrystalProxyHandler(CrystalBaseHandler):
         filter_execution_list = dict()
 
         ''' Parse global filters '''
-        for key, filter_metadata in self.global_filters.items():
+        for _, filter_metadata in self.global_filters.items():
             filter_metadata = json.loads(filter_metadata)
-            if filter_metadata["is_pre_" + self.method] or \
-               filter_metadata["is_post_" + self.method]:
+            if (filter_metadata["is_pre_" + self.method] or \
+                filter_metadata["is_post_" + self.method]):
+                
                 filter_main = filter_metadata["main"]
                 filter_type = filter_metadata["filter_type"]
                 server = filter_metadata["execution_server"]
                 filter_dep = filter_metadata["dependencies"]
                 has_reverse = filter_metadata["has_reverse"]
                 reverse = filter_metadata["execution_server_reverse"]
+                order = filter_metadata["execution_order"]
                 
                 if filter_metadata["is_pre_" + self.method]:
                     when = "on_pre_" + self.method
@@ -112,17 +114,17 @@ class CrystalProxyHandler(CrystalBaseHandler):
                                'dependencies': filter_dep,
                                'has_reverse': has_reverse,
                                'when': when}
-                
-                filter_execution_list[int(key)] = filter_data
+
+                filter_execution_list[int(order)] = filter_data
 
         ''' Parse filter list (Storlet and Native)'''
         if self.filter_list:
             for _, filter_metadata in self.filter_list.items():
                 filter_metadata = json.loads(filter_metadata)
 
-                # Check conditions
                 if filter_metadata["is_pre_" + self.method] or \
                    filter_metadata["is_post_" + self.method]:
+                    
                     if self._check_size_type(filter_metadata):
                         filter_name = filter_metadata['filter_name']
                         server = filter_metadata["execution_server"]
@@ -134,7 +136,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                         filter_dep = filter_metadata["dependencies"]
                         filter_size = filter_metadata["content_length"]
                         has_reverse = filter_metadata["has_reverse"]
-                        
+
                         if filter_metadata["is_pre_" + self.method]:
                             when = "on_pre_" + self.method
                         elif filter_metadata["is_post_" + self.method]:
@@ -200,7 +202,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'crystal/filters' in response.headers:
             self.logger.info('Crystal Filters - There are filters to execute'
                              ' from object server')
-            filter_list = eval(response.headers.pop('crystal/filters'))
+            filter_list = json.loads(response.headers.pop('crystal/filters'))
             response = self.apply_filters_on_post_get(response, filter_list)
 
         return response

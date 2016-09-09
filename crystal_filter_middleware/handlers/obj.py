@@ -53,7 +53,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
 
         # Get filter list to execute from proxy server
         if 'crystal/filters' in self.request.headers:
-            req_filter_list = eval(self.request.headers.pop('crystal/filters'))
+            req_filter_list = json.loads(self.request.headers.pop('crystal/filters'))
             for key in sorted(req_filter_list, reverse=True):
                 launch_key = len(new_storlet_list.keys())
                 new_storlet_list[launch_key] = req_filter_list[key]
