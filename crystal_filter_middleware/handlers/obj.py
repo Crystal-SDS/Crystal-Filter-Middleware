@@ -73,9 +73,10 @@ class CrystalObjectHandler(CrystalBaseHandler):
             response.headers['ETag'] = crystal_md['original-etag']
             response.headers['Content-Length'] = crystal_md['original-size']
             filter_list = crystal_md.get('filter-list')
-            
-        filter_exec_list = self._augment_filter_execution_list(filter_list)
-        response = self.apply_filters_on_post_get(response, filter_exec_list)
+        
+        if response.is_success:
+            filter_exec_list = self._augment_filter_execution_list(filter_list)
+            response = self.apply_filters_on_post_get(response, filter_exec_list)
             
         return response
 
