@@ -117,6 +117,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
                 filter_execution_list[int(order)] = filter_data
 
+        storlet_request = False
+        if 'X-Run-Storlet' in self.request.headers:
+            storlet_request = True
+            storlet = self.request.headers.pop('X-Run-Storlet')
+            
         ''' Parse filter list (Storlet and Native)'''
         if self.filter_list:
             for _, filter_metadata in self.filter_list.items():
@@ -154,9 +159,16 @@ class CrystalProxyHandler(CrystalBaseHandler):
                                        'has_reverse': has_reverse,
                                        'when': when}
 
-                        launch_key = filter_metadata["execution_order"]
+                        launch_key = int(filter_metadata["execution_order"]) +\
+                            len(filter_execution_list)
+
                         filter_execution_list[launch_key] = filter_data
 
+                        if storlet_request:
+                            if storlet == filter_data['name']:
+                                self.request.headers['X-Run-Storlet'] = storlet
+                                filter_execution_list.pop(launch_key)
+        
         return filter_execution_list
     
     def _format_crystal_metadata(self, crystal_md):
