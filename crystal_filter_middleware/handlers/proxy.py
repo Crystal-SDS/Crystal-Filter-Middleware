@@ -22,13 +22,13 @@ class CrystalProxyHandler(CrystalBaseHandler):
         account_key_list = self.redis.keys("pipeline:" + str(self.account) + "*")
         self.global_filters = self.redis.hgetall('global_filters')
         self.filter_list = None
-        key = self.account + "/" + self.container + "/" + self.obj
+        key = self.account + ":" + self.container + ":" + self.obj
         for target in range(3):
-            self.target_key = key.rsplit("/", target)[0]
+            self.target_key = key.rsplit(":", target)[0]
             if 'pipeline:' + self.target_key in account_key_list:
                 self.filter_list = self.redis.hgetall('pipeline:' + self.target_key)
                 break
-
+        
     def _parse_vaco(self):
         return self.request.split_path(4, 4, rest_with_last=True)
 
