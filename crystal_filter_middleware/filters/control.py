@@ -39,13 +39,13 @@ class CrystalFilterControl(object):
     def execute_filters(self, req_resp, filter_exec_list, app,
                         api_version, account, container, obj, method):
 
-        requets_data = dict()
-        requets_data['app'] = app
-        requets_data['api_version'] = api_version
-        requets_data['account'] = account
-        requets_data['container'] = container
-        requets_data['object'] = obj
-        requets_data['method'] = method
+        request_data = dict()
+        request_data['app'] = app
+        request_data['api_version'] = api_version
+        request_data['account'] = account
+        request_data['container'] = container
+        request_data['object'] = obj
+        request_data['method'] = method
 
         on_other_server = dict()
         filter_executed = False
@@ -68,7 +68,7 @@ class CrystalFilterControl(object):
                     if not storlet_filter:
                         storlet_filter = self._setup_storlet_gateway(self.conf,
                                                                      self.logger,
-                                                                     requets_data)
+                                                                     request_data)
 
                     crystal_iter = storlet_filter.execute(req_resp,
                                                           filter_data,
@@ -82,7 +82,7 @@ class CrystalFilterControl(object):
 
                     native_filter = self._load_native_filter(filter_data)
                     crystal_iter = native_filter.execute(req_resp, crystal_iter,
-                                                         requets_data)
+                                                         request_data)
 
                     filter_executed = True
 
