@@ -54,7 +54,14 @@ There are two differentiated kinds of filters:
 
 * Native filters: python classes that can intercept GET/PUT requests at all the possible life-cycle stages offered by Swift.
 
-![alt text](http://crystal-sds.org/wp-content/uploads/2016/10/crystal_filters_diagram_small.png "Crystal filters")
+![alt text](http://crystal-sds.org/wp-content/uploads/2016/10/crystal_filters_diagram2_small.png "Crystal filters")
+
+As depicted in the diagram above, filters can be installed both in the proxy and the object storage server. Several filters can be executed for the same request (e.g. compression+encryption). The execution order of filters can be configured and does not depend on the kind of filter: a storlet can be applied before a native filter and vice versa.
+
+Filter classes must be registered through [Crystal controller API](https://github.com/Crystal-SDS/controller/), that also provides means to configure the filter pipeline and to control the server where they will be executed.  
+
+
+A convenient [web dashboard](https://github.com/iostackproject/SDS-dashboard) is also available to simplify Crystal controller API calls.
 
 There is a repository that includes some [filter samples](https://github.com/Crystal-SDS/filter-samples) for compression, encryption, caching, bandwidth differentiation, ...
 
@@ -148,20 +155,36 @@ class NativeFilterExample(object):
                 # Filter code for GET requests should be placed here
                 # ...
             elif isinstance(req_resp, Response):
-                # GET response
+                # ...
+                # Filter code for GET responses should be placed here (the response includes the object data in this phase)
+                # ...
         elif method == 'put':
             if isinstance(req_resp, Request):
-                # PUT request
+                # ...
+                # Filter code for PUT requests should be placed here (the request includes the object data in this phase)
+                # ...
             elif isinstance(req_resp, Response):
-                # PUT response
+                # ...
+                # Filter code for PUT responses should be placed here
+                # ...
 
         return crystal_iter
 ```
 
-The `execute()` method is called by the middleware at all life-cycle stages of the request/response:  
+The `execute()` method is called by the middleware at all life-cycle stages of the request/response. The `req_resp` parameter can be the swift.common.swob.Request or swift.common.swob.Response depending on the life-cycle phase the method is called.
+Upon registering the filter through Crystal controller, you can specify which server and life-cycle phase the filter will be called at, depending on the type of required computation or data-manipulation. For example, a caching filter should be executed at proxy servers, intercepting both the PUT and GET requests before reaching the object server (at request phase).
 
-Filter classes must be registered through [Crystal controller API](https://github.com/Crystal-SDS/controller/).
-A convenient [web dashboard](https://github.com/iostackproject/SDS-dashboard) is also available to simplify these API calls.
+The `crystal_iter` parameter is an iterator of the data stream to be processed.
+
+The `request_data` parameter is a dictionary that contains the following keys:
+
+- `'app'`: `'proxy-server'` or `'object-server'`
+- `'api_version'`: the Swift API version
+- `'account'`: the tenant name
+- `'container'`: the container name
+- `'object'`: the object name
+- `'method'`: `'put'` or `'get'` 
+
 
 ## Support
 
