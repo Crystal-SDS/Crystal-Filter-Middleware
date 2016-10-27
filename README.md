@@ -143,7 +143,6 @@ class NativeFilterExample(object):
     def __init__(self, global_conf, filter_conf, logger):
         # The constructor receives the configuration parameters and the logger
         self.logger = logger
-        self.cache = BlockCache()
     
     # This method is called by the middleware to allow filters to intercept GET/PUT requests life-cycle
     def execute(self, req_resp, crystal_iter, request_data):
@@ -176,7 +175,7 @@ class NativeFilterExample(object):
 The `execute()` method is called by the middleware at all life-cycle stages of the request/response. The `req_resp` parameter can be the swift.common.swob.Request or swift.common.swob.Response depending on the life-cycle phase the method is called.
 Upon registering the filter through Crystal controller, you can specify which server and life-cycle phase the filter will be called at, depending on the type of required computation or data-manipulation. For example, a caching filter should be executed at proxy servers, intercepting both the PUT and GET requests before reaching the object server (at request phase).
 
-The `crystal_iter` parameter is an iterator of the data stream to be processed.
+The `crystal_iter` parameter is an iterator of the data stream to be processed. The `execute()` method must return the `crystal_iter` or a modified data stream because the successive filters must receive an iterator to operate correctly, in turn. 
 
 The `request_data` parameter is a dictionary that contains the following keys:
 
@@ -186,7 +185,6 @@ The `request_data` parameter is a dictionary that contains the following keys:
 - `'container'`: the container name
 - `'object'`: the object name
 - `'method'`: `'put'` or `'get'` 
-
 
 ## Support
 
