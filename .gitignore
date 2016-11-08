@@ -60,3 +60,4 @@ target/
 /.pydevproject
 /copy_middleware.sh
 /.gitignore
+/deploy_filter.py
