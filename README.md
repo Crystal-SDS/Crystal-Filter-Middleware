@@ -42,7 +42,7 @@ redis_db = 0
 ```
 
 * Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be
-added before `slo` filter and after `crystal_introspection_handler` filter.
+added before `slo` filter and after `crystal_metric_handler` filter.
 
 * The last step is to restart the proxy-server/object-server service.
 
