@@ -28,7 +28,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
             if 'pipeline:' + self.target_key in account_key_list:
                 self.filter_list = self.redis.hgetall('pipeline:' + self.target_key)
                 break
-        
+
     def _parse_vaco(self):
         return self.request.split_path(4, 4, rest_with_last=True)
 
@@ -91,9 +91,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         ''' Parse global filters '''
         for _, filter_metadata in self.global_filters.items():
             filter_metadata = json.loads(filter_metadata)
-            if (filter_metadata["is_pre_" + self.method] or \
-                filter_metadata["is_post_" + self.method]):
-                
+            if (filter_metadata["is_pre_" + self.method] or
+                    filter_metadata["is_post_" + self.method]):
+
                 filter_main = filter_metadata["main"]
                 filter_type = filter_metadata["filter_type"]
                 server = filter_metadata["execution_server"]
@@ -101,12 +101,12 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 has_reverse = filter_metadata["has_reverse"]
                 reverse = filter_metadata["execution_server_reverse"]
                 order = filter_metadata["execution_order"]
-                
+
                 if filter_metadata["is_pre_" + self.method]:
                     when = "on_pre_" + self.method
                 elif filter_metadata["is_post_" + self.method]:
                     when = "on_post_" + self.method
-                
+
                 filter_data = {'main': filter_main,
                                'execution_server': server,
                                'execution_server_reverse': reverse,
@@ -121,7 +121,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'X-Run-Storlet' in self.request.headers:
             storlet_request = True
             storlet = self.request.headers.pop('X-Run-Storlet')
-            
+
         ''' Parse filter list (Storlet and Native)'''
         if self.filter_list:
             for _, filter_metadata in self.filter_list.items():
@@ -129,7 +129,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
                 if filter_metadata["is_pre_" + self.method] or \
                    filter_metadata["is_post_" + self.method]:
-                    
+
                     if self._check_size_type(filter_metadata):
                         filter_name = filter_metadata['filter_name']
                         server = filter_metadata["execution_server"]
@@ -168,9 +168,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
                             if storlet == filter_data['name']:
                                 self.request.headers['X-Run-Storlet'] = storlet
                                 filter_execution_list.pop(launch_key)
-        
+
         return filter_execution_list
-    
+
     def _format_crystal_metadata(self, crystal_md):
         for key in crystal_md["filter-list"].keys():
             cfilter = crystal_md["filter-list"][key]
@@ -189,7 +189,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 crystal_md["filter-list"].pop(key)
 
         return crystal_md
-    
+
     def _set_crystal_metadata(self, filter_exec_list):
         crystal_md = {}
         crystal_md["original-etag"] = self.request.headers.get('ETag', '')
@@ -235,10 +235,10 @@ class CrystalProxyHandler(CrystalBaseHandler):
                     # verification.
                     self.etag = self.request.headers.pop('ETag')
                 self.apply_filters_on_pre_put(filter_list)
-        else:   
+        else:
             self.logger.info('Crystal Filters - No filters to execute')
-      
+
         response = self.request.get_response(self.app)
         response.headers['ETag'] = self.etag
-        
+
         return response
