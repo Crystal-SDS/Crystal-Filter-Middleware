@@ -40,6 +40,7 @@ class CrystalGatewayStorlet():
         is forwarded to the data node (GET case)
         :param params: paramegers to be augmented to request
         """
+        req.headers['X-Storlet-Language'] = self.storlet_metadata['language']
         req.headers['X-Storlet-Main'] = self.storlet_metadata['main']
         req.headers['X-Storlet-Dependency'] = self.storlet_metadata['dependencies']
         req.headers['X-Storlet-Content-Length'] = self.storlet_metadata['size']

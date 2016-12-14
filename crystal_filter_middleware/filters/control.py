@@ -67,7 +67,8 @@ class CrystalFilterControl(object):
                         storlet_filter = self._setup_storlet_gateway(self.conf,
                                                                      self.logger,
                                                                      request_data)
-
+                    # setting the default supported language TODO: support python storlets
+                    filter_data['language'] = 'java'
                     crystal_iter = storlet_filter.execute(req_resp,
                                                           filter_data,
                                                           crystal_iter)
