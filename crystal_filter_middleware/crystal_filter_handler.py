@@ -70,6 +70,7 @@ def filter_factory(global_conf, **local_conf):
 
     crystal_conf = dict()
     crystal_conf['execution_server'] = conf.get('execution_server', 'object')
+    crystal_conf['identifier'] = conf.get('os_identifier')
 
     crystal_conf['redis_host'] = conf.get('redis_host', 'controller')
     crystal_conf['redis_port'] = int(conf.get('redis_port', 6379))
@@ -81,8 +82,8 @@ def filter_factory(global_conf, **local_conf):
     crystal_conf['storlet_dependency'] = conf.get('storlet_dependency',
                                                   'dependency')
     crystal_conf['storlet_logcontainer'] = conf.get('storlet_logcontainer',
-                                                  'storletlog')
-    
+                                                    'storletlog')
+
     crystal_conf['storlet_gateway_module'] = conf.get('storlet_gateway_module')
     crystal_conf['storlet_execute_on_proxy_only'] = \
         config_true_value(conf.get('storlet_execute_on_proxy_only', 'false'))
