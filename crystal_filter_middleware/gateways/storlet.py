@@ -38,7 +38,7 @@ class CrystalGatewayStorlet():
         """
         Add to request the storlet parameters to be used in case the request
         is forwarded to the data node (GET case)
-        :param params: paramegers to be augmented to request
+        :param params: parameters to be augmented to request
         """
         req.headers['X-Storlet-Language'] = self.storlet_metadata['language']
         req.headers['X-Storlet-Main'] = self.storlet_metadata['main']
@@ -81,17 +81,17 @@ class CrystalGatewayStorlet():
         new_env = dict(req_resp.environ)
         req = Request.blank(new_env['PATH_INFO'], new_env)
 
-        req.environ['QUERY_STRING'] = params
+        #req.environ['QUERY_STRING'] = params
         req.headers['X-Run-Storlet'] = self.storlet_name
         self._augment_storlet_request(req)
         options = self._get_storlet_invocation_options(req)
  
         if hasattr(crystal_iter, '_fp'):
-            sreq = self.sreq_class(storlet_id, req.params, dict(),
+            sreq = self.sreq_class(storlet_id, params, dict(),
                                    data_fd=crystal_iter._fp.fileno(),
                                    options=options)
         else:
-            sreq = self.sreq_class(storlet_id, req.params, dict(),
+            sreq = self.sreq_class(storlet_id, params, dict(),
                                    crystal_iter, options=options)
 
         return sreq

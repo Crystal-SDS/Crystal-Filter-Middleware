@@ -5,6 +5,7 @@ from copy import deepcopy
 import mimetypes
 import operator
 import json
+import urllib
 
 mappings = {'>': operator.gt, '>=': operator.ge,
             '==': operator.eq, '<=': operator.le, '<': operator.lt,
@@ -117,10 +118,15 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
                 filter_execution_list[int(order)] = filter_data
 
-        storlet_request = False
-        if 'X-Run-Storlet' in self.request.headers:
-            storlet_request = True
-            storlet = self.request.headers.pop('X-Run-Storlet')
+        # storlet_request = False
+        # if 'X-Run-Storlet' in self.request.headers:
+        #     storlet_request = True
+        #     storlet = self.request.headers.pop('X-Run-Storlet')
+
+        crystal_callable_request = False
+        if 'X-Crystal-Run-Filter' in self.request.headers:
+            crystal_callable_request = True
+            callable_storlet = self.request.headers.pop('X-Crystal-Run-Filter')
 
         ''' Parse filter list (Storlet and Native)'''
         if self.filter_list:
@@ -141,6 +147,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                         filter_dep = filter_metadata["dependencies"]
                         filter_size = filter_metadata["content_length"]
                         has_reverse = filter_metadata["has_reverse"]
+                        filter_callable = filter_metadata["callable"]
 
                         if filter_metadata["is_pre_" + self.method]:
                             when = "on_pre_" + self.method
@@ -148,7 +155,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                             when = "on_post_" + self.method
 
                         filter_data = {'name': filter_name,
-                                       'params': params,
+                                       'params': self._parse_csv_params(params),
                                        'execution_server': server,
                                        'execution_server_reverse': reverse,
                                        'id': filter_id,
@@ -164,9 +171,20 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
                         filter_execution_list[launch_key] = filter_data
 
-                        if storlet_request:
-                            if storlet == filter_data['name']:
-                                self.request.headers['X-Run-Storlet'] = storlet
+                        # if storlet_request:
+                        #     if storlet == filter_data['name']:
+                        #         self.request.headers['X-Run-Storlet'] = storlet
+                        #         filter_execution_list.pop(launch_key)
+
+                        self.logger.info('Crystal Filters - ' + filter_data['name'])
+                        if filter_callable:
+                            self.logger.info('Crystal Filters - ' + filter_data['name'] + ' is callable')
+                            if crystal_callable_request and callable_storlet == filter_data['name']:
+                                filter_data['params'] = self._parse_headers_params()  # overwrite params with those on headers
+                                self.logger.info('Crystal Filters - ' + filter_data['name'] + ' - Parameters parsed')
+                            else:
+                                # Remove from execution list (either not called by request or the call is not for this filter)
+                                self.logger.info('Crystal Filters - ' + filter_data['name'] + ' - No parameters')
                                 filter_execution_list.pop(launch_key)
 
         return filter_execution_list
@@ -197,6 +215,30 @@ class CrystalProxyHandler(CrystalBaseHandler):
         crystal_md["filter-list"] = deepcopy(filter_exec_list)
         cmd = self._format_crystal_metadata(crystal_md)
         self.request.headers['X-Object-Sysmeta-Crystal'] = cmd
+
+    def _parse_csv_params(self, csv_params):
+        """
+        Provides comma separated parameters "a=1,b=2" as a dictionary
+        """
+        params_dict = dict()
+        plist = csv_params.split(",")
+        for p in plist:
+            k,v = p.strip().split('=')
+            params_dict[k] = v
+        return params_dict
+
+    def _parse_headers_params(self):
+        """
+        Extract parameters from headers
+        """
+        parameters = dict()
+        for param in self.request.headers:
+            if param.lower().startswith('x-crystal-parameter'):
+                keyvalue = self.request.headers[param]
+                keyvalue = urllib.unquote(keyvalue)
+                [key, value] = keyvalue.split(':')
+                parameters[key] = value
+        return parameters
 
     @public
     def GET(self):
