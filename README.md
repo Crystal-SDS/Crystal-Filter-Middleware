@@ -19,16 +19,18 @@ To install the module you can run the next command in the root directory:
 python setup.py install
 ```
 
-After that, it is necessary to configure OpenStack Swift to add the middleware to the proxy and/or object servers.
+After that, it is necessary to configure OpenStack Swift to add the middleware to the proxy and object servers.
 
 * In the proxy servers, we need to add a new filter that must be called `crystal_filter_handler` in `/etc/swift/proxy-server.conf`. Copy the lines below to the bottom part of the file:
 ```ini
 [filter:crystal_filter_handler]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = proxy
+os_identifier = proxy
 redis_host = changeme
 redis_port = 6379
 redis_db = 0
+storlet_gateway_module = storlet_gateway.gateways.docker.gateway:StorletGatewayDocker
 ```
 
 * In the object servers, we need to add a new filter that must be called `crystal_filter_handler` in `/etc/swift/object-server.conf`. Copy the lines below to the bottom part of the file:
@@ -36,15 +38,22 @@ redis_db = 0
 [filter:crystal_filter_handler]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = object
+os_identifier = os1
 redis_host = changeme
 redis_port = 6379
 redis_db = 0
+storlet_gateway_module = storlet_gateway.gateways.docker.gateway:StorletGatewayDocker
 ```
+Each object server must have a different `os_identifier` value (e.g.: `os1`, `os2`, ...)
 
-* Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be
-added before `slo` filter and after `crystal_metric_handler` filter.
 
-* The last step is to restart the proxy-server/object-server service.
+* Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be added after `keystoneauth` and `crystal_metric_handler` filters and before `slo`, `proxy-logging` and `proxy-server` filters.
+
+* The last step is to restart the proxy-server/object-server service:
+```bash
+sudo swift-init proxy restart
+sudo swift-init object restart
+```
 
 ## Usage
 
