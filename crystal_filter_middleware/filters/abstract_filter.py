@@ -35,7 +35,7 @@ class AbstractFilter(object):
         """
         This method intercepts the Response.
 
-        :param request: swift.common.swob.Response instance
+        :param response: swift.common.swob.Response instance
         :param crystal_iter: data iterator
         :returns: FilterIter instance (data iterator with the filter injected)
         """
