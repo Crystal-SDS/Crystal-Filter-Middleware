@@ -1,6 +1,9 @@
+import json
+import os
+import sys
+
 from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
 from swift.common.swob import Request
-import json
 
 PACKAGE_NAME = __name__.split('.')[0]
 
@@ -22,12 +25,20 @@ class CrystalFilterControl(object):
         self.conf = conf
         self.server = self.conf.get('execution_server')
 
+        # Add source directories to sys path
+        global_native_filters_path = os.path.join('/opt', 'crystal', 'global_native_filters')
+        native_filters_path = os.path.join('/opt', 'crystal', 'native_filters')
+        sys.path.insert(0, global_native_filters_path)
+        sys.path.insert(0, native_filters_path)
+
     def _setup_storlet_gateway(self, conf, logger, request_data):
         return CrystalGatewayStorlet(conf, logger, request_data)
 
     def _load_native_filter(self, filter_data):
         (modulename, classname) = filter_data['main'].rsplit('.', 1)
-        m = __import__(PACKAGE_NAME + '.filters.' + modulename, globals(),
+
+        # m = __import__(PACKAGE_NAME + '.filters.' + modulename, globals(),
+        m = __import__(modulename, globals(),
                        locals(), [classname])
         m_class = getattr(m, classname)
         metric_class = m_class(filter_conf=filter_data,
