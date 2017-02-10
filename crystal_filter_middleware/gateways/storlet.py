@@ -22,7 +22,7 @@ class CrystalGatewayStorlet():
         self.gateway = None
         self.gateway_class = self.conf['storlets_gateway_module']
         self.sreq_class = self.gateway_class.request_class
-        
+
         self.storlet_container = conf.get('storlet_container')
         self.storlet_dependency = conf.get('storlet_dependency')
         self.log_container = conf.get('storlet_logcontainer')
@@ -33,7 +33,7 @@ class CrystalGatewayStorlet():
         Setup gateway instance
         """
         self.gateway = self.gateway_class(self.conf, self.logger, self.scope)
-    
+
     def _augment_storlet_request(self, req):
         """
         Add to request the storlet parameters to be used in case the request
@@ -46,7 +46,7 @@ class CrystalGatewayStorlet():
         req.headers['X-Storlet-Content-Length'] = self.storlet_metadata['size']
         req.headers['X-Storlet-Generate-Log'] = False
         req.headers['X-Storlet-X-Timestamp'] = 0
-        
+
     def _get_storlet_invocation_options(self, req):
         options = dict()
 
@@ -62,7 +62,7 @@ class CrystalGatewayStorlet():
         scope = self.account
         if scope.rfind(':') > 0:
             scope = scope[:scope.rfind(':')]
-        
+
         options['scope'] = self.scope
 
         options['generate_log'] = \
@@ -73,7 +73,7 @@ class CrystalGatewayStorlet():
                              self.storlet_dependency, self.log_container,
                              self.client_conf_file, self.logger)
 
-        return options    
+        return options
 
     def _build_storlet_request(self, req_resp, params, crystal_iter):
         storlet_id = self.storlet_name
@@ -81,11 +81,10 @@ class CrystalGatewayStorlet():
         new_env = dict(req_resp.environ)
         req = Request.blank(new_env['PATH_INFO'], new_env)
 
-        #req.environ['QUERY_STRING'] = params
         req.headers['X-Run-Storlet'] = self.storlet_name
         self._augment_storlet_request(req)
         options = self._get_storlet_invocation_options(req)
- 
+
         if hasattr(crystal_iter, '_fp'):
             sreq = self.sreq_class(storlet_id, params, dict(),
                                    data_fd=crystal_iter._fp.fileno(),
@@ -99,7 +98,7 @@ class CrystalGatewayStorlet():
     def _call_gateway(self, req_resp, params, crystal_iter):
         sreq = self._build_storlet_request(req_resp, params, crystal_iter)
         sresp = self.gateway.invocation_flow(sreq)
-        
+
         return sresp.data_iter
 
     def execute(self, req_resp, storlet_data, crystal_iter):
@@ -110,7 +109,7 @@ class CrystalGatewayStorlet():
 
         self.logger.info('Crystal Filters - Go to execute ' + storlet +
                          ' storlet with parameters "' + str(params) + '"')
-        
+
         self._setup_gateway()
         data_iter = self._call_gateway(req_resp, params, crystal_iter)
 

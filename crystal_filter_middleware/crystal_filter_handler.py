@@ -94,7 +94,6 @@ def filter_factory(global_conf, **local_conf):
 
     """ Load Storlets Gateway class """
     module_name = conf.get('storlet_gateway_module', '')
-
     mo = module_name[:module_name.rfind(':')]
     cl = module_name[module_name.rfind(':') + 1:]
     module = __import__(mo, fromlist=[cl])

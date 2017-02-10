@@ -44,7 +44,7 @@ class CrystalBaseHandler(object):
         self.server = conf.get('execution_server')
         self.sds_containers = [conf.get('storlet_container'),
                                conf.get('storlet_dependency'),
-                               conf.get('storlet_images','docker_images')]
+                               conf.get('storlet_images', 'docker_images')]
         self.app = app
         self.logger = logger
         self.conf = conf
@@ -88,10 +88,15 @@ class CrystalBaseHandler(object):
         return self._obj
 
     @property
-    def is_crystal_object_put(self):
-        return (self.container in self.sds_containers and self.obj and
-                self.request.method == 'PUT')
-    
+    def is_crystal_valid_request(self):
+        if self.server == 'proxy':
+            storlet_enabled = self.is_account_storlet_enabled()
+        else:
+            storlet_enabled = True
+        crystal_container = self.container in self.sds_containers
+
+        return (not crystal_container and self.obj and storlet_enabled)
+
     def _parse_vaco(self):
         """
         Parse method of path from self.request which depends on child class
@@ -120,6 +125,14 @@ class CrystalBaseHandler(object):
     def is_available_trigger(self):
         return any((True for x in self.available_triggers
                     if x in self.request.headers.keys()))
+
+    @property
+    def is_slo_get_request(self):
+        """
+        Determines from a GET request and its  associated response
+        if the object is a SLO
+        """
+        return self.request.params.get('multipart-manifest') == 'get'
 
     def is_slo_response(self, resp):
         self.logger.debug(
@@ -172,9 +185,9 @@ class CrystalBaseHandler(object):
         for key, filter_data in filter_list.items():
             if filter_data['when'] == 'on_pre_get':
                 filtered_filter_list[key] = filter_data
-                
+
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on PRE-GET: '+ str(filtered_filter_list))
+            self.logger.info('Crystal Filters - Go to execute filters on PRE-GET: ' + str(filtered_filter_list))
             self._call_filter_control_on_get(self.request, filtered_filter_list)
 
     def apply_filters_on_post_get(self, resp, filter_list):
@@ -182,23 +195,23 @@ class CrystalBaseHandler(object):
         for key, filter_data in filter_list.items():
             if filter_data['when'] == 'on_post_get':
                 filtered_filter_list[key] = filter_data
-                
+
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on POST-GET: '+ str(filtered_filter_list))
+            self.logger.info('Crystal Filters - Go to execute filters on POST-GET: ' + str(filtered_filter_list))
             resp = self._call_filter_control_on_get(resp, filtered_filter_list)
-   
+
         return resp
-   
+
     def apply_filters_on_pre_put(self, filter_list):
         filtered_filter_list = dict()
         for key, filter_data in filter_list.items():
             if filter_data['when'] == 'on_pre_put':
                 filtered_filter_list[key] = filter_data
-        
+
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on PRE-PUT: '+ str(filtered_filter_list))
+            self.logger.info('Crystal Filters - Go to execute filters on PRE-PUT: ' + str(filtered_filter_list))
             self.request = self._call_filter_control_on_put(filtered_filter_list)
-    
+
             if 'CONTENT_LENGTH' in self.request.environ:
                 self.request.environ.pop('CONTENT_LENGTH')
             self.request.headers['Transfer-Encoding'] = 'chunked'

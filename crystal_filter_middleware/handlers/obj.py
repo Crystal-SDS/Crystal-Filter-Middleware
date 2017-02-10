@@ -18,29 +18,18 @@ class CrystalObjectHandler(CrystalBaseHandler):
             5, 5, rest_with_last=True)
         return ('0', acc, cont, obj)
 
-    @property
-    def is_slo_get_request(self):
-        """
-        Determines from a GET request and its  associated response
-        if the object is a SLO
-        """
-        return self.request.params.get('multipart-manifest') == 'get'
-
     def handle_request(self):
-        if self.is_crystal_object_put:
-            return self.request.get_response(self.app)
-
-        if hasattr(self, self.request.method):
-            try:
-                handler = getattr(self, self.request.method)
-                getattr(handler, 'publicly_accessible')
-            except AttributeError:
-                return HTTPMethodNotAllowed(request=self.request)
-            return handler()
+        if self.is_crystal_valid_request:
+            if hasattr(self, self.request.method):
+                try:
+                    handler = getattr(self, self.request.method)
+                    getattr(handler, 'publicly_accessible')
+                except AttributeError:
+                    return HTTPMethodNotAllowed(request=self.request)
+                return handler()
         else:
+            self.logger.info('Crystal Filters - Request disabled for Crystal')
             return self.request.get_response(self.app)
-            # un-defined method should be NOT ALLOWED
-            # return HTTPMethodNotAllowed(request=self.request)
 
     def _augment_filter_execution_list(self, filter_list):
         new_storlet_list = {}
@@ -66,18 +55,18 @@ class CrystalObjectHandler(CrystalBaseHandler):
         GET handler on Object
         """
         response = self.request.get_response(self.app)
-  
+
         filter_list = None
         if 'X-Object-Sysmeta-Crystal' in response.headers:
             crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
             response.headers['ETag'] = crystal_md['original-etag']
             response.headers['Content-Length'] = crystal_md['original-size']
             filter_list = crystal_md.get('filter-list')
-        
+
         if response.is_success:
             filter_exec_list = self._augment_filter_execution_list(filter_list)
             response = self.apply_filters_on_post_get(response, filter_exec_list)
-            
+
         return response
 
     @public
@@ -86,7 +75,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
         PUT handler on Object Server
         """
         # IF 'crystal/filters' is in headers, means that is needed to run a
-        # Filter on Object Server before store the object.        
+        # Filter on Object Server before store the object.
         if 'crystal/filters' in self.request.headers:
             self.logger.info('Crystal Filters - There are filters to execute')
             filter_list = json.loads(self.request.headers['crystal/filters'])
