@@ -10,6 +10,7 @@ from crystal_filter_middleware.handlers.base import NotCrystalRequest
 from crystal_filter_middleware.filters.control import CrystalFilterControl
 
 import ConfigParser
+import redis
 
 
 class CrystalHandlerMiddleware(object):
@@ -108,6 +109,28 @@ def filter_factory(global_conf, **local_conf):
 
     for key, val in additional_items:
         crystal_conf[key] = val
+
+    """ Register Lua script to retrieve policies in a single redis call """
+    r = redis.StrictRedis(crystal_conf['redis_host'],
+                          crystal_conf['redis_port'],
+                          crystal_conf['redis_db'])
+    lua = """
+        local t = {}
+        if redis.call('EXISTS', 'pipeline:'..ARGV[1]..':'..ARGV[2]..':'..ARGV[3])==1 then
+          t = redis.call('HGETALL', 'pipeline:'..ARGV[1]..':'..ARGV[2]..':'..ARGV[3])
+        elseif redis.call('EXISTS', 'pipeline:'..ARGV[1]..':'..ARGV[2])==1 then
+          t = redis.call('HGETALL', 'pipeline:'..ARGV[1]..':'..ARGV[2])
+        elseif redis.call('EXISTS', 'pipeline:'..ARGV[1])==1 then
+          t = redis.call('HGETALL', 'pipeline:'..ARGV[1])
+        end
+        t[#t+1] = '@@@@'
+        local t3 = redis.call('HGETALL', 'global_filters')
+        for i=1,#t3 do
+          t[#t+1] = t3[i]
+        end
+        return t"""
+    lua_sha = r.script_load(lua)
+    crystal_conf['LUA_get_pipeline_sha'] = lua_sha
 
     def crystal_filter_handler(app):
         return CrystalHandlerMiddleware(app, conf, crystal_conf)

@@ -20,16 +20,16 @@ class CrystalProxyHandler(CrystalBaseHandler):
                                                   app, logger,
                                                   filter_control)
         self.etag = ''
-        # Dynamic binding of policies
-        account_key_list = self.redis.keys("pipeline:" + str(self.account) + "*")
-        self.global_filters = self.redis.hgetall('global_filters')
-        self.filter_list = None
-        key = self.account + ":" + self.container + ":" + self.obj
-        for target in range(3):
-            self.target_key = key.rsplit(":", target)[0]
-            if 'pipeline:' + self.target_key in account_key_list:
-                self.filter_list = self.redis.hgetall('pipeline:' + self.target_key)
-                break
+
+        # Dynamic binding of policies: using a Lua script that executes a hgetall on the first matching key of a list
+        # and also returns the global filters
+        lua_sha = conf.get('LUA_get_pipeline_sha')
+        args = (self.account, self.container, self.obj)
+        redis_list = self.redis.evalsha(lua_sha, 0, *args)
+        index = redis_list.index("@@@@")  # Separator between pipeline and global filters
+
+        self.filter_list = dict(zip(redis_list[0:index:2], redis_list[1:index:2]))
+        self.global_filters = dict(zip(redis_list[index+1::2], redis_list[index+2::2]))
 
     def _parse_vaco(self):
         return self.request.split_path(4, 4, rest_with_last=True)
