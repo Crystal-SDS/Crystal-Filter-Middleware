@@ -16,17 +16,16 @@ class CrystalObjectHandler(CrystalBaseHandler):
     def _parse_vaco(self):
         _, _, acc, cont, obj = self.request.split_path(
             5, 5, rest_with_last=True)
-        return ('0', acc, cont, obj)
+        return '0', acc, cont, obj
 
     def handle_request(self):
-        if self.is_crystal_valid_request:
-            if hasattr(self, self.request.method):
-                try:
-                    handler = getattr(self, self.request.method)
-                    getattr(handler, 'publicly_accessible')
-                except AttributeError:
-                    return HTTPMethodNotAllowed(request=self.request)
-                return handler()
+        if self.is_crystal_valid_request and hasattr(self, self.request.method):
+            try:
+                handler = getattr(self, self.request.method)
+                getattr(handler, 'publicly_accessible')
+            except AttributeError:
+                return HTTPMethodNotAllowed(request=self.request)
+            return handler()
         else:
             self.logger.info('Crystal Filters - Request disabled for Crystal')
             return self.request.get_response(self.app)

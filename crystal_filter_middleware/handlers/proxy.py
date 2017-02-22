@@ -51,14 +51,13 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
     def handle_request(self):
 
-        if self.is_crystal_valid_request:
-            if hasattr(self, self.request.method):
-                try:
-                    handler = getattr(self, self.request.method)
-                    getattr(handler, 'publicly_accessible')
-                except AttributeError:
-                    return HTTPMethodNotAllowed(request=self.request)
-                return handler()
+        if self.is_crystal_valid_request and hasattr(self, self.request.method):
+            try:
+                handler = getattr(self, self.request.method)
+                getattr(handler, 'publicly_accessible')
+            except AttributeError:
+                return HTTPMethodNotAllowed(request=self.request)
+            return handler()
         else:
             self.logger.info('Crystal Filters - Request disabled for Crystal')
             return self.request.get_response(self.app)
