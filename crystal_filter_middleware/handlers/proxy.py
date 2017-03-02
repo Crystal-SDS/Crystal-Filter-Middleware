@@ -1,6 +1,6 @@
 from crystal_filter_middleware.handlers import CrystalBaseHandler
-from swift.common.swob import HTTPMethodNotAllowed
-from swift.common.utils import public
+from swift.common.swob import HTTPMethodNotAllowed, Response
+from swift.common.utils import public, InputProxy
 from copy import deepcopy
 import mimetypes
 import operator
@@ -249,6 +249,10 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.logger.info('Crystal Filters - ' + str(filter_list))
             self.request.headers['crystal/filters'] = json.dumps(filter_list)
             self.apply_filters_on_pre_get(filter_list)
+
+        if not isinstance(self.request.environ['wsgi.input'], InputProxy):
+            return Response(app_iter=self.request.environ['wsgi.input'],
+                            request=self.request)
 
         response = self.request.get_response(self.app)
 
