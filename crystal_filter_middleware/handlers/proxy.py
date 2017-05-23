@@ -251,7 +251,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.apply_filters_on_pre_get(filter_list)
 
         if not isinstance(self.request.environ['wsgi.input'], InputProxy):
-            if not self.request.response_headers:
+            if not hasattr(self.request, 'response_headers') or not self.request.response_headers:
                 self.request.response_headers = None
             return Response(app_iter=self.request.environ['wsgi.input'],
                             headers=self.request.response_headers,

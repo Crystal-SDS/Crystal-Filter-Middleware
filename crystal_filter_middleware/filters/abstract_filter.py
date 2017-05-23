@@ -40,7 +40,7 @@ class AbstractFilter(object):
         :returns: FilterIter instance (data iterator with the filter injected)
         """
         # TODO: Implement the logic of the filter
-        return FilterIter(crystal_iter, TIMEOUT, self.filter_put)
+        return FilterIter(crystal_iter, TIMEOUT, self.filter_get)
 
     def _put_object(self, request, crystal_iter):
         """
@@ -51,7 +51,7 @@ class AbstractFilter(object):
         :returns: FilterIter instance (data iterator with the filter injected)
         """
         # TODO: Implement the logic of the filter
-        return FilterIter(crystal_iter, TIMEOUT, self.filter_get)
+        return FilterIter(crystal_iter, TIMEOUT, self.filter_put)
 
     def _filter_put(self, chunk):
         """
@@ -176,7 +176,10 @@ class FilterIter(object):
     def close(self):
         if self.closed:
             return
-        self.obj_data.close()
+        try:
+            self.obj_data.close()
+        except AttributeError:
+            pass
         self.closed = True
 
     def __del__(self):
