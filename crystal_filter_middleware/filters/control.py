@@ -4,6 +4,7 @@ import sys
 
 from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
 from swift.common.swob import Request
+from swift.common.utils import InputProxy
 
 PACKAGE_NAME = __name__.split('.')[0]
 
@@ -72,6 +73,10 @@ class CrystalFilterControl(object):
             filter_data = filter_exec_list[key]
             server = filter_data["execution_server"]
             if server == self.server:
+                if method == 'get' and isinstance(req_resp, Request) and filter_executed and not isinstance(crystal_iter, InputProxy):
+                    self.logger.info('Crystal Filters - A previous filter generated a response. Ignoring filter ' + filter_data['main'])
+                    continue
+
                 if filter_data['type'] == 'storlet':
                     """ Storlet Filter Execution """
                     if not storlet_filter:
