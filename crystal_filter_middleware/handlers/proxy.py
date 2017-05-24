@@ -59,7 +59,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 return HTTPMethodNotAllowed(request=self.request)
             return handler()
         else:
-            self.logger.info('Crystal Filters - Request disabled for Crystal')
+            self.logger.info('Request disabled for Crystal')
             return self.request.get_response(self.app)
 
     def _check_size_type(self, filter_metadata):
@@ -172,15 +172,15 @@ class CrystalProxyHandler(CrystalBaseHandler):
                         #         self.request.headers['X-Run-Storlet'] = storlet
                         #         filter_execution_list.pop(launch_key)
 
-                        # self.logger.info('Crystal Filters - ' + filter_data['name'])
+                        # self.logger.info('' + filter_data['name'])
                         if filter_callable:
-                            # self.logger.info('Crystal Filters - ' + filter_data['name'] + ' is callable')
+                            # self.logger.info('' + filter_data['name'] + ' is callable')
                             if crystal_callable_request and callable_storlet == filter_data['name']:
                                 filter_data['params'] = self._parse_headers_params()  # overwrite params with those on headers
-                                # self.logger.info('Crystal Filters - ' + filter_data['name'] + ' - Parameters parsed')
+                                # self.logger.info('' + filter_data['name'] + ' - Parameters parsed')
                             else:
                                 # Remove from execution list (either not called by request or the call is not for this filter)
-                                # self.logger.info('Crystal Filters - ' + filter_data['name'] + ' - No parameters')
+                                # self.logger.info('' + filter_data['name'] + ' - No parameters')
                                 filter_execution_list.pop(launch_key)
 
         return filter_execution_list
@@ -244,9 +244,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         GET handler on Proxy
         """
         if self.global_filters or self.filter_list:
-            self.logger.info('Crystal Filters - There are Filters to execute')
+            self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
-            self.logger.info('Crystal Filters - ' + str(filter_list))
+            self.logger.info('' + str(filter_list))
             self.request.headers['crystal/filters'] = json.dumps(filter_list)
             self.apply_filters_on_pre_get(filter_list)
 
@@ -260,7 +260,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         response = self.request.get_response(self.app)
 
         if 'crystal/filters' in response.headers:
-            self.logger.info('Crystal Filters - There are filters to execute'
+            self.logger.info('There are filters to execute'
                              ' from object server')
             filter_list = json.loads(response.headers.pop('crystal/filters'))
             response = self.apply_filters_on_post_get(response, filter_list)
@@ -270,6 +270,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Transfer-Encoding' in response.headers:
             response.headers.pop('Transfer-Encoding')
 
+        response.headers['etag'] = ""
+
         return response
 
     @public
@@ -278,9 +280,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         PUT handler on Proxy
         """
         if self.global_filters or self.filter_list:
-            self.logger.info('Crystal Filters - There are Filters to execute')
+            self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
-            self.logger.info('Crystal Filters - ' + str(filter_list))
+            self.logger.info('' + str(filter_list))
             if filter_list:
                 self._set_crystal_metadata(filter_list)
                 if 'ETag' in self.request.headers:
@@ -290,7 +292,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                     self.etag = self.request.headers.pop('ETag')
                 self.apply_filters_on_pre_put(filter_list)
         else:
-            self.logger.info('Crystal Filters - No filters to execute')
+            self.logger.info('No filters to execute')
 
         response = self.request.get_response(self.app)
         response.headers['ETag'] = self.etag

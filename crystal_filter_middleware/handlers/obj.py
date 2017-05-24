@@ -27,7 +27,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
                 return HTTPMethodNotAllowed(request=self.request)
             return handler()
         else:
-            self.logger.info('Crystal Filters - Request disabled for Crystal')
+            self.logger.info('Request disabled for Crystal')
             return self.request.get_response(self.app)
 
     def _augment_filter_execution_list(self, filter_list):
@@ -76,7 +76,6 @@ class CrystalObjectHandler(CrystalBaseHandler):
         # IF 'crystal/filters' is in headers, means that is needed to run a
         # Filter on Object Server before store the object.
         if 'crystal/filters' in self.request.headers:
-            self.logger.info('Crystal Filters - There are filters to execute')
             filter_list = json.loads(self.request.headers['crystal/filters'])
             self.apply_filters_on_pre_put(filter_list)
 

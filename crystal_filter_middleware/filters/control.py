@@ -74,7 +74,7 @@ class CrystalFilterControl(object):
             server = filter_data["execution_server"]
             if server == self.server:
                 if method == 'get' and isinstance(req_resp, Request) and filter_executed and not isinstance(crystal_iter, InputProxy):
-                    self.logger.info('Crystal Filters - A previous filter generated a response. Ignoring filter ' + filter_data['main'])
+                    self.logger.info('A previous filter generated a response. Ignoring filter ' + filter_data['main'])
                     continue
 
                 if filter_data['type'] == 'storlet':
@@ -92,7 +92,7 @@ class CrystalFilterControl(object):
 
                 else:
                     """ Native Filter execution """
-                    self.logger.info('Crystal Filters - Go to execute native'
+                    self.logger.info('Go to execute native'
                                      ' filter: ' + filter_data['main'])
 
                     native_filter = self._load_native_filter(filter_data)

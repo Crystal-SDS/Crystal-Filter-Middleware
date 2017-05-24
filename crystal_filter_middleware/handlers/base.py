@@ -187,7 +187,7 @@ class CrystalBaseHandler(object):
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on PRE-GET: ' + str(filtered_filter_list))
+            self.logger.info('Go to execute filters on PRE-GET: ' + str(filtered_filter_list))
             self._call_filter_control_on_get(self.request, filtered_filter_list)
 
     def apply_filters_on_post_get(self, resp, filter_list):
@@ -197,7 +197,7 @@ class CrystalBaseHandler(object):
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on POST-GET: ' + str(filtered_filter_list))
+            self.logger.info('Go to execute filters on POST-GET: ' + str(filtered_filter_list))
             resp = self._call_filter_control_on_get(resp, filtered_filter_list)
 
         return resp
@@ -209,7 +209,7 @@ class CrystalBaseHandler(object):
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
-            self.logger.info('Crystal Filters - Go to execute filters on PRE-PUT: ' + str(filtered_filter_list))
+            self.logger.info('Go to execute filters on PRE-PUT: ' + str(filtered_filter_list))
             self.request = self._call_filter_control_on_put(filtered_filter_list)
 
             if 'CONTENT_LENGTH' in self.request.environ:

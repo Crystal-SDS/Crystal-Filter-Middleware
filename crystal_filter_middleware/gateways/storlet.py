@@ -107,7 +107,7 @@ class CrystalGatewayStorlet():
         self.storlet_name = storlet
         self.storlet_metadata = storlet_data
 
-        self.logger.info('Crystal Filters - Go to execute ' + storlet +
+        self.logger.info('Go to execute ' + storlet +
                          ' storlet with parameters "' + str(params) + '"')
 
         self._setup_gateway()

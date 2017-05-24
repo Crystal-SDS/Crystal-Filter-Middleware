@@ -18,8 +18,10 @@ class CrystalHandlerMiddleware(object):
     def __init__(self, app, conf, crystal_conf):
         self.app = app
         self.conf = crystal_conf
-        self.logger = get_logger(conf, log_route='crystal_filter_handler')
         self.exec_server = self.conf.get('execution_server')
+        self.logger = get_logger(conf, name=self.exec_server +
+                                 "-server Crystal Filters",
+                                 log_route='crystal_filter_handler')
         self.containers = [self.conf.get('storlet_container'),
                            self.conf.get('storlet_dependency')]
         self.handler_class = self._get_handler(self.exec_server)
@@ -44,7 +46,7 @@ class CrystalHandlerMiddleware(object):
             request_handler = self.handler_class(req, self.conf,
                                                  self.app, self.logger,
                                                  self.filter_control)
-            self.logger.debug('crystal_filter_handler call in %s: with %s/%s/%s' %
+            self.logger.debug('call in %s: with %s/%s/%s' %
                               (self.exec_server, request_handler.account,
                                request_handler.container, request_handler.obj))
         except HTTPException:
@@ -55,10 +57,10 @@ class CrystalHandlerMiddleware(object):
         try:
             return request_handler.handle_request()
         except HTTPException:
-            self.logger.exception('Crystal filter middleware execution failed')
+            self.logger.exception('Middleware execution failed')
             raise
         except Exception:
-            self.logger.exception('Crystal filter middleware execution failed')
+            self.logger.exception('Middleware execution failed')
             raise HTTPInternalServerError(
                 body='Crystal filter middleware execution failed')
 
