@@ -19,11 +19,12 @@ class CrystalProxyHandler(CrystalBaseHandler):
         super(CrystalProxyHandler, self).__init__(request, conf,
                                                   app, logger,
                                                   filter_control)
-        self.etag = ''
 
-        # Dynamic binding of policies: using a Lua script that executes a hgetall on the first matching key of a list
-        # and also returns the global filters
-        lua_sha = conf.get('LUA_get_pipeline_sha')
+    def _get_dynamic_policies(self):
+        # Dynamic binding of policies: using a Lua script that executes
+        # a hgetall on the first matching key of a list and also returns
+        # the global filters
+        lua_sha = self.conf.get('LUA_get_pipeline_sha')
         args = (self.account, self.container, self.obj)
         redis_list = self.redis.evalsha(lua_sha, 0, *args)
         index = redis_list.index("@@@@")  # Separator between pipeline and global filters
@@ -53,6 +54,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.is_crystal_valid_request and hasattr(self, self.request.method):
             try:
+                self._get_dynamic_policies()
                 handler = getattr(self, self.request.method)
                 getattr(handler, 'publicly_accessible')
             except AttributeError:
@@ -285,6 +287,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.logger.info('' + str(filter_list))
             if filter_list:
                 self._set_crystal_metadata(filter_list)
+                self.etag = ''
                 if 'ETag' in self.request.headers:
                     # The object goes to be modified by some Filter, so we
                     # delete the Etag from request headers to prevent checksum
