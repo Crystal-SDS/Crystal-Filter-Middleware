@@ -281,13 +281,13 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         PUT handler on Proxy
         """
+        self.etag = ''
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
             self.logger.info('' + str(filter_list))
             if filter_list:
                 self._set_crystal_metadata(filter_list)
-                self.etag = ''
                 if 'ETag' in self.request.headers:
                     # The object goes to be modified by some Filter, so we
                     # delete the Etag from request headers to prevent checksum
