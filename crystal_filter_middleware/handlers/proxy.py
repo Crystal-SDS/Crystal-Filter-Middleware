@@ -272,7 +272,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Transfer-Encoding' in response.headers:
             response.headers.pop('Transfer-Encoding')
 
-        response.headers['etag'] = ""
+        #response.headers['etag'] = ""
 
         return response
 
