@@ -19,6 +19,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         super(CrystalProxyHandler, self).__init__(request, conf,
                                                   app, logger,
                                                   filter_control)
+        self.etag = ''
 
     def _get_dynamic_policies(self):
         # Dynamic binding of policies: using a Lua script that executes
@@ -245,6 +246,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         GET handler on Proxy
         """
+        if 'ETag' in self.request.headers:
+            self.etag = self.request.headers.pop('ETag')
+
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
@@ -272,7 +276,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Transfer-Encoding' in response.headers:
             response.headers.pop('Transfer-Encoding')
 
-        #response.headers['etag'] = ""
+        response.headers['etag'] = self.etag
 
         return response
 
@@ -281,7 +285,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         PUT handler on Proxy
         """
-        self.etag = ''
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
