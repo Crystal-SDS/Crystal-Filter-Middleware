@@ -196,9 +196,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 cfilter['when'] = 'on_post_get'
                 current_params = cfilter['params']
                 if current_params:
-                    cfilter['params'] = current_params + ',' + 'reverse=True'
+                    cfilter['params']['reverse'] = 'True'
                 else:
-                    cfilter['params'] = 'reverse=True'
+                    cfilter['params'] = {'reverse': 'True'}
 
                 cfilter['execution_server'] = cfilter['execution_server_reverse']
                 cfilter.pop('execution_server_reverse')
