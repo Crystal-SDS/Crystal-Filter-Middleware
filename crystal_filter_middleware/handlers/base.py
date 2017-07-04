@@ -183,7 +183,7 @@ class CrystalBaseHandler(object):
     def apply_filters_on_pre_get(self, filter_list):
         filtered_filter_list = dict()
         for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_pre_get':
+            if filter_data['when'] == 'on_pre_get' or filter_data['when'] == 'on_both_get':
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
@@ -193,7 +193,7 @@ class CrystalBaseHandler(object):
     def apply_filters_on_post_get(self, resp, filter_list):
         filtered_filter_list = dict()
         for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_post_get':
+            if filter_data['when'] == 'on_post_get' or filter_data['when'] == 'on_both_get':
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
@@ -205,7 +205,7 @@ class CrystalBaseHandler(object):
     def apply_filters_on_pre_put(self, filter_list):
         filtered_filter_list = dict()
         for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_pre_put':
+            if filter_data['when'] == 'on_pre_put' or filter_data['when'] == 'on_both_put':
                 filtered_filter_list[key] = filter_data
 
         if filtered_filter_list:
