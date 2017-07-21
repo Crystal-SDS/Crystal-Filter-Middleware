@@ -252,8 +252,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         GET handler on Proxy
         """
-        if 'ETag' in self.request.headers:
-            self.etag = self.request.headers.pop('ETag')
+        if 'Etag' in self.request.headers.keys():
+            self.etag = self.request.headers.pop('Etag')
 
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
@@ -282,7 +282,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Transfer-Encoding' in response.headers:
             response.headers.pop('Transfer-Encoding')
 
-        response.headers['etag'] = self.etag
+        if 'etag' in self.request.headers.keys():
+            response.headers['etag'] = self.etag
 
         return response
 
@@ -291,22 +292,22 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         PUT handler on Proxy
         """
+        if 'Etag' in self.request.headers.keys():
+            self.etag = self.request.headers.pop('Etag')
+
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
             filter_list = self._build_filter_execution_list()
             self.logger.info('' + str(filter_list))
             if filter_list:
                 self._set_crystal_metadata(filter_list)
-                if 'ETag' in self.request.headers:
-                    # The object goes to be modified by some Filter, so we
-                    # delete the Etag from request headers to prevent checksum
-                    # verification.
-                    self.etag = self.request.headers.pop('ETag')
                 self.apply_filters_on_pre_put(filter_list)
         else:
             self.logger.info('No filters to execute')
 
         response = self.request.get_response(self.app)
-        response.headers['ETag'] = self.etag
+
+        if 'Etag' in self.request.headers.keys():
+            response.headers['Etag'] = self.etag
 
         return response
