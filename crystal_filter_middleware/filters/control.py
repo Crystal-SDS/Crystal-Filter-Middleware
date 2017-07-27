@@ -2,7 +2,11 @@ import json
 import os
 import sys
 
-from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
+try:
+    from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
+except:
+    STROLETS_ENABLED = False
+
 from swift.common.swob import Request
 from swift.common.utils import InputProxy
 
@@ -79,16 +83,19 @@ class CrystalFilterControl(object):
 
                 if filter_data['type'] == 'storlet':
                     """ Storlet Filter Execution """
-                    if not storlet_filter:
-                        storlet_filter = self._setup_storlet_gateway(self.conf,
-                                                                     self.logger,
-                                                                     request_data)
-                    # setting the default supported language TODO: support python storlets
-                    filter_data['language'] = 'java'
-                    crystal_iter = storlet_filter.execute(req_resp,
-                                                          filter_data,
-                                                          crystal_iter)
-                    filter_executed = True
+                    if STROLETS_ENABLED:
+                        if not storlet_filter:
+                            storlet_filter = self._setup_storlet_gateway(self.conf,
+                                                                         self.logger,
+                                                                         request_data)
+                        # setting the default supported language TODO: support python storlets
+                        filter_data['language'] = 'java'
+                        crystal_iter = storlet_filter.execute(req_resp,
+                                                              filter_data,
+                                                              crystal_iter)
+                        filter_executed = True
+                    else:
+                        pass
 
                 else:
                     """ Native Filter execution """
