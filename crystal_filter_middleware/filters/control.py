@@ -4,6 +4,7 @@ import sys
 
 try:
     from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
+    STROLETS_ENABLED = True
 except:
     STROLETS_ENABLED = False
 
