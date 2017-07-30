@@ -42,8 +42,8 @@ class CrystalBaseHandler(object):
         """
         self.request = request
         self.server = conf.get('execution_server')
-        self.sds_containers = [conf.get('storlet_container'),
-                               conf.get('storlet_dependency'),
+        self.sds_containers = [conf.get('storlet_container', 'storlet'),
+                               conf.get('storlet_dependency', 'dependencies'),
                                conf.get('storlet_images', 'docker_images')]
         self.app = app
         self.logger = logger
@@ -90,7 +90,7 @@ class CrystalBaseHandler(object):
     @property
     def is_crystal_valid_request(self):
         if self.server == 'proxy':
-            storlet_enabled = self.is_account_storlet_enabled()
+            storlet_enabled = self.is_account_crystal_enabled()
         else:
             storlet_enabled = True
         crystal_container = self.container in self.sds_containers
@@ -149,10 +149,10 @@ class CrystalBaseHandler(object):
                     self.account, self.container, self.obj))
         return is_slo
 
-    def is_account_storlet_enabled(self):
+    def is_account_crystal_enabled(self):
         account_meta = get_account_info(self.request.environ,
                                         self.app)['meta']
-        storlets_enabled = account_meta.get('storlet-enabled',
+        storlets_enabled = account_meta.get('crystal-enabled',
                                             'False')
 
         if not config_true_value(storlets_enabled):

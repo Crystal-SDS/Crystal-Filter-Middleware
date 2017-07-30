@@ -4,14 +4,12 @@ import sys
 
 try:
     from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
-    STROLETS_ENABLED = True
+    STROLETS_INSTALLED = True
 except:
-    STROLETS_ENABLED = False
+    STROLETS_INSTALLED = False
 
 from swift.common.swob import Request
 from swift.common.utils import InputProxy
-
-PACKAGE_NAME = __name__.split('.')[0]
 
 
 class Singleton(type):
@@ -42,8 +40,6 @@ class CrystalFilterControl(object):
 
     def _load_native_filter(self, filter_data):
         (modulename, classname) = filter_data['main'].rsplit('.', 1)
-
-        # m = __import__(PACKAGE_NAME + '.filters.' + modulename, globals(),
         m = __import__(modulename, globals(),
                        locals(), [classname])
         m_class = getattr(m, classname)
@@ -84,7 +80,7 @@ class CrystalFilterControl(object):
 
                 if filter_data['type'] == 'storlet':
                     """ Storlet Filter Execution """
-                    if STROLETS_ENABLED:
+                    if STROLETS_INSTALLED:
                         if not storlet_filter:
                             storlet_filter = self._setup_storlet_gateway(self.conf,
                                                                          self.logger,

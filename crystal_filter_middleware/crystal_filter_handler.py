@@ -14,9 +14,9 @@ import redis
 
 try:
     import storlet_middleware
-    STROLETS_ENABLED = True
+    STROLETS_INSTALLED = True
 except:
-    STROLETS_ENABLED = False
+    STROLETS_INSTALLED = False
 
 
 class CrystalHandlerMiddleware(object):
@@ -28,8 +28,6 @@ class CrystalHandlerMiddleware(object):
         self.logger = get_logger(conf, name=self.exec_server +
                                  "-server Crystal Filters",
                                  log_route='crystal_filter_handler')
-        self.containers = [self.conf.get('storlet_container'),
-                           self.conf.get('storlet_dependency')]
         self.handler_class = self._get_handler(self.exec_server)
 
         ''' Singleton instance of filter control '''
@@ -91,7 +89,7 @@ def filter_factory(global_conf, **local_conf):
     """
     Storlets Configuration
     """
-    if STROLETS_ENABLED:
+    if STROLETS_INSTALLED:
         crystal_conf['storlet_timeout'] = int(conf.get('storlet_timeout', 40))
         crystal_conf['storlet_container'] = conf.get('storlet_container',
                                                      'storlet')
