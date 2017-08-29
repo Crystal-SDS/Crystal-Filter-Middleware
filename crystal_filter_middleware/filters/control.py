@@ -4,9 +4,9 @@ import sys
 
 try:
     from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
-    STROLETS_INSTALLED = True
+    STORLETS_INSTALLED = True
 except:
-    STROLETS_INSTALLED = False
+    STORLETS_INSTALLED = False
 
 from swift.common.swob import Request
 from swift.common.utils import InputProxy
@@ -80,7 +80,7 @@ class CrystalFilterControl(object):
 
                 if filter_data['type'] == 'storlet':
                     """ Storlet Filter Execution """
-                    if STROLETS_INSTALLED:
+                    if STORLETS_INSTALLED:
                         if not storlet_filter:
                             storlet_filter = self._setup_storlet_gateway(self.conf,
                                                                          self.logger,

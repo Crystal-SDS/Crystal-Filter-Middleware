@@ -1,6 +1,6 @@
 from swift.common.swob import Request
 from swift.common.utils import config_true_value
-from storlet_middleware.handlers.base import SwiftFileManager
+from storlets.swift_middleware.handlers.base import SwiftFileManager
 
 
 class CrystalGatewayStorlet():

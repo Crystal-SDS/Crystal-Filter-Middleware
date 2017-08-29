@@ -152,7 +152,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
                         filter_callable = filter_metadata["callable"]
 
                         if filter_metadata["is_pre_" + self.method] and \
-                            filter_metadata["is_post_" + self.method]:
+                           filter_metadata["is_post_" + self.method]:
                             when = "on_both_" + self.method
                         elif filter_metadata["is_pre_" + self.method]:
                             when = "on_pre_" + self.method
