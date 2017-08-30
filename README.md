@@ -14,9 +14,11 @@ This repository contains the code of the storage filters that intercept object f
 
 ## Installation
 
-To install the module you can run the next command in the root directory:
+To install the module, clone the repository and run the installation command in the root directory:
 ```sh
-python setup.py install
+git clone https://github.com/Crystal-SDS/filter-middleware
+cd filter-middleware
+sudo python setup.py install
 ```
 
 After that, it is necessary to configure OpenStack Swift to add the middleware to the proxy and object servers.
@@ -31,7 +33,7 @@ redis_host = changeme
 redis_port = 6379
 redis_db = 0
 
-\# Storlets Configuration
+# Storlets Configuration
 storlet_container = storlet
 storlet_dependency = dependency
 storlet_logcontainer = storletlog
@@ -50,7 +52,7 @@ redis_host = changeme
 redis_port = 6379
 redis_db = 0
 
-\# Storlets Configuration
+# Storlets Configuration
 storlet_container = storlet
 storlet_dependency = dependency
 storlet_logcontainer = storletlog
