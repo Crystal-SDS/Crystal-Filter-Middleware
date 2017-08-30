@@ -6,11 +6,11 @@ This repository contains the code of the storage filters that intercept object f
  
 ## Requirements
 
-* An OpenStack Swift deployment (this project was tested in Kilo version).
+* An OpenStack Swift deployment (this project was tested from Kilo to Pike OpenStack releases).
 
 * A Crystal controller deployment.
 
-* [Redis](http://redis.io/)
+* Optionally, in order to use Storlet filters, it is necessary to [install the storlet engine](http://storlets.readthedocs.io/en/latest/deployer_installation.html) to Swift.
 
 ## Installation
 
@@ -30,7 +30,14 @@ os_identifier = proxy
 redis_host = changeme
 redis_port = 6379
 redis_db = 0
-storlet_gateway_module = storlet_gateway.gateways.docker.gateway:StorletGatewayDocker
+
+\# Storlets Configuration
+storlet_container = storlet
+storlet_dependency = dependency
+storlet_logcontainer = storletlog
+storlet_execute_on_proxy_only = false
+storlet_gateway_module = docker
+storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 ```
 
 * In the object servers, we need to add a new filter that must be called `crystal_filter_handler` in `/etc/swift/object-server.conf`. Copy the lines below to the bottom part of the file:
@@ -42,7 +49,14 @@ os_identifier = os1
 redis_host = changeme
 redis_port = 6379
 redis_db = 0
-storlet_gateway_module = storlet_gateway.gateways.docker.gateway:StorletGatewayDocker
+
+\# Storlets Configuration
+storlet_container = storlet
+storlet_dependency = dependency
+storlet_logcontainer = storletlog
+storlet_execute_on_proxy_only = false
+storlet_gateway_module = docker
+storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 ```
 Each object server must have a different `os_identifier` value (e.g.: `os1`, `os2`, ...)
 
@@ -75,8 +89,6 @@ A convenient [web dashboard](https://github.com/iostackproject/SDS-dashboard) is
 There is a repository that includes some [filter samples](https://github.com/Crystal-SDS/filter-samples) for compression, encryption, caching, bandwidth differentiation, ...
 
 ### Storlet filters
-
-In order to use Storlet filters, it is necessary to [install the storlet engine](http://storlets.readthedocs.io/en/latest/deployer_installation.html) to Swift.
 
 The code below is an example of a storlet filter:
 
