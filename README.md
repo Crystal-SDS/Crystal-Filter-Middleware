@@ -1,6 +1,6 @@
 # Crystal Filter Middleware for OpenStack Swift
 
-_Please visit [Crystal controller](https://github.com/Crystal-SDS/controller/) for an overview of all Crystal components._
+_Please visit [Crystal Installation](https://github.com/Crystal-SDS/INSTALLATION/) for an overview of all Crystal components._
 
 This repository contains the code of the storage filters that intercept object flows and run computations or perform transformations on them.
  
@@ -8,7 +8,7 @@ This repository contains the code of the storage filters that intercept object f
 
 * An OpenStack Swift deployment (this project was tested from Kilo to Pike OpenStack releases).
 
-* A Crystal controller deployment.
+* A [Crystal controller](https://github.com/Crystal-SDS/controller) deployment.
 
 * Optionally, in order to use Storlet filters, it is necessary to [install the storlet engine](http://storlets.readthedocs.io/en/latest/deployer_installation.html) to Swift.
 
