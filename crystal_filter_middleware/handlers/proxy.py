@@ -26,7 +26,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         # a hgetall on the first matching key of a list and also returns
         # the global filters
         lua_sha = self.conf.get('LUA_get_pipeline_sha')
-        args = (self.account, self.container, self.obj)
+        args = (self.account.replace('AUTH_', ''), self.container, self.obj)
         redis_list = self.redis.evalsha(lua_sha, 0, *args)
         index = redis_list.index("@@@@")  # Separator between pipeline and global filters
 

@@ -90,12 +90,12 @@ class CrystalBaseHandler(object):
     @property
     def is_crystal_valid_request(self):
         if self.server == 'proxy':
-            storlet_enabled = self.is_account_crystal_enabled()
+            crystal_enabled = self.is_account_crystal_enabled()
         else:
-            storlet_enabled = True
+            crystal_enabled = True
         crystal_container = self.container in self.sds_containers
 
-        return (not crystal_container and self.obj and storlet_enabled)
+        return (not crystal_container and self.obj and crystal_enabled)
 
     def _parse_vaco(self):
         """
@@ -152,10 +152,10 @@ class CrystalBaseHandler(object):
     def is_account_crystal_enabled(self):
         account_meta = get_account_info(self.request.environ,
                                         self.app)['meta']
-        storlets_enabled = account_meta.get('crystal-enabled',
-                                            'False')
+        crystal_enabled = account_meta.get('crystal-enabled',
+                                           'False')
 
-        if not config_true_value(storlets_enabled):
+        if not config_true_value(crystal_enabled):
             return False
 
         return True
