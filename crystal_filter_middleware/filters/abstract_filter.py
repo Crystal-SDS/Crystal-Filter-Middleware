@@ -11,7 +11,7 @@ class AbstractFilter(object):
         the entry point will be the same)
 
         :param req_resp: swift.common.swob.Request or swift.common.swob.Response instance
-        :param crystal_iter: data iterator
+        :param data_iter: data iterator
         :param requets_data: request metadata
         :returns crystal_iter: data iterator
         """
@@ -21,8 +21,8 @@ class AbstractFilter(object):
         """
         This method intercepts the Requests.
 
-        :param response: swift.common.swob.Response instance
-        :param crystal_iter: data iterator
+        :param req_resp: swift.common.swob.Request or swift.common.swob.Response instance
+        :param data_iter: data iterator
         :returns: Data iterator (mandatory)
         """
         raise NotImplemented

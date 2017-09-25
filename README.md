@@ -161,15 +161,14 @@ For more information on writing and deploy Storlets, please refer to [Storlets d
 The code below is an example of a native filter:
 
 ```python
-class NativeFilterExample(object):
+class NativeFilterExample(AbstractFilter):
     
     def __init__(self, global_conf, filter_conf, logger):
-        # The constructor receives the configuration parameters and the logger
-        self.logger = logger
+        super(NativeFilterExample, self).__init__(global_conf, filter_conf, logger)
     
     # This method is called by the middleware to allow filters to intercept GET/PUT requests life-cycle
-    def execute(self, req_resp, crystal_iter, request_data):
-        method = request_data['method']
+    def _apply_filter(self, req_resp, data_iter, parameters):
+        method = req_resp.environ['REQUEST_METHOD']
         
         if method == 'get':
             if isinstance(req_resp, Request):
@@ -192,22 +191,18 @@ class NativeFilterExample(object):
                 # Filter code for PUT responses should be placed here
                 # ...
 
-        return crystal_iter
+        return data_iter
 ```
 
-The `execute()` method is called by the middleware at all life-cycle stages of the request/response. The `req_resp` parameter can be the swift.common.swob.Request or swift.common.swob.Response depending on the life-cycle phase the method is called.
+The `_apply_filter()` method is called by the middleware at all life-cycle stages of the request/response. The `req_resp` parameter can be the swift.common.swob.Request or swift.common.swob.Response depending on the life-cycle phase the method is called.
 Upon registering the filter through Crystal controller, you can specify which server and life-cycle phase the filter will be called at, depending on the type of required computation or data-manipulation. For example, a caching filter should be executed at proxy servers, intercepting both the PUT and GET requests before reaching the object server (at request phase).
 
-The `crystal_iter` parameter is an iterator of the data stream to be processed. The `execute()` method must return the `crystal_iter` or a modified data stream because the successive filters must receive an iterator to operate correctly, in turn. 
+The `data_iter` parameter is an iterator of the data stream to be processed. The `_apply_filter()` method must return the `data_iter` or a modified data stream because the successive filters must receive an iterator to operate correctly, in turn. 
 
-The `request_data` parameter is a dictionary that contains the following keys:
+The `parameters` parameter is a dictionary that contains the parameters introduced by the dashboard.
 
-- `'app'`: `'proxy-server'` or `'object-server'`
-- `'api_version'`: the Swift API version
-- `'account'`: the tenant name
-- `'container'`: the container name
-- `'object'`: the object name
-- `'method'`: `'put'` or `'get'` 
+Take a look to the [Filter Samples](https://github.com/Crystal-SDS/filter-samples) repository for more examples.
+
 
 ## Support
 
