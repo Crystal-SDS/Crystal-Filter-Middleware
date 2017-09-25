@@ -13,9 +13,9 @@ import redis
 
 try:
     import storlets
-    STORLETS_INSTALLED = True
+    STORLETS = True
 except:
-    STORLETS_INSTALLED = False
+    STORLETS = False
 
 
 class CrystalHandlerMiddleware(object):
@@ -79,10 +79,15 @@ def filter_factory(global_conf, **local_conf):
     conf['redis_port'] = int(conf.get('redis_port', 6379))
     conf['redis_db'] = int(conf.get('redis_db', 0))
 
+    conf['global_native_filters_path'] = conf.get('global_native_filters_path',
+                                                  '/opt/crystal/global_native_filters')
+    conf['native_filters_path'] = conf.get('native_filters_path',
+                                           '/opt/crystal/native_filters')
+
     """
     Storlets Configuration
     """
-    if STORLETS_INSTALLED:
+    if STORLETS:
         """ Load Storlets Gateway class """
         from storlets.gateway.loader import load_gateway
         module_name = conf.get('storlet_gateway_module', 'stub')

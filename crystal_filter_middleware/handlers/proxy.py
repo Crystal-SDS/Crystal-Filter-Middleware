@@ -39,8 +39,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
     def _get_object_type(self):
         object_type = self.request.headers['Content-Type']
         if not object_type:
-            object_type = mimetypes.guess_type(
-                self.request.environ['PATH_INFO'])[0]
+            object_type = mimetypes.guess_type(self.request.environ['PATH_INFO'])[0]
         return object_type
 
     @property

@@ -1,15 +1,13 @@
 import json
-import os
 import sys
 
 try:
     from crystal_filter_middleware.gateways.storlet import CrystalGatewayStorlet
-    STORLETS_INSTALLED = True
+    STORLETS = True
 except:
-    STORLETS_INSTALLED = False
+    STORLETS = False
 
 from swift.common.swob import Request
-from swift.common.utils import InputProxy
 
 
 class Singleton(type):
@@ -30,80 +28,76 @@ class CrystalFilterControl(object):
         self.server = self.conf.get('execution_server')
 
         # Add source directories to sys path
-        global_native_filters_path = os.path.join('/opt', 'crystal', 'global_native_filters')
-        native_filters_path = os.path.join('/opt', 'crystal', 'native_filters')
+        global_native_filters_path = self.conf.get('global_native_filters_path')
+        native_filters_path = self.conf.get('native_filters_path')
         sys.path.insert(0, global_native_filters_path)
         sys.path.insert(0, native_filters_path)
 
-    def _setup_storlet_gateway(self, conf, logger, request_data):
-        return CrystalGatewayStorlet(conf, logger, request_data)
+    def _setup_storlet_gateway(self, conf, logger):
+        return CrystalGatewayStorlet(conf, logger)
 
     def _load_native_filter(self, filter_data):
-        (modulename, classname) = filter_data['main'].rsplit('.', 1)
+        modulename = filter_data['name'].split('.')[0]
+        classname = filter_data['main']
         m = __import__(modulename, globals(),
                        locals(), [classname])
         m_class = getattr(m, classname)
-        metric_class = m_class(filter_conf=filter_data,
-                               global_conf=self.conf,
+        metric_class = m_class(global_conf=self.conf,
+                               filter_conf=filter_data,
                                logger=self.logger)
 
         return metric_class
 
-    def execute_filters(self, req_resp, filter_exec_list, app,
-                        api_version, account, container, obj, method):
-
-        request_data = dict()
-        request_data['app'] = app
-        request_data['api_version'] = api_version
-        request_data['account'] = account
-        request_data['container'] = container
-        request_data['object'] = obj
-        request_data['method'] = method
-
-        on_other_server = dict()
-        filter_executed = False
-        storlet_filter = None
-
+    def _get_data_iter(self, req_resp):
         if isinstance(req_resp, Request):
             reader = req_resp.environ['wsgi.input'].read
-            crystal_iter = iter(lambda: reader(65536), '')
+            data_iter = iter(lambda: reader(65536), '')
         else:
-            crystal_iter = req_resp.app_iter
+            data_iter = req_resp.app_iter
+
+        return data_iter
+
+    def _execute_storlet_filter(self, req_resp, data_iter, filter_data):
+        """
+        Storlet Filter Execution method
+        """
+        self.logger.info('Go to execute storlet filter: ' + filter_data['main'])
+        storlet_gateway = self._setup_storlet_gateway(self.conf, self.logger)
+        return storlet_gateway.execute(req_resp, data_iter, filter_data)
+
+    def _execute_native_filter(self, req_resp, data_iter, filter_data):
+        """
+        Native Filter execution method
+        """
+        self.logger.info('Go to execute native filter: ' + filter_data['main'])
+        native_filter = self._load_native_filter(filter_data)
+        parameters = filter_data['params']
+        return native_filter.execute(req_resp, data_iter, parameters)
+
+    def execute_filters(self, req_resp, filter_exec_list):
+        """
+        Entry Point for executing all filters
+        :param req_resp: swift.common.swob.Request or swift.common.swob.Response instance
+        :param filter_exec_list: list of filters to execute
+        :returns req_resp: swift.common.swob.Request or
+                           swift.common.swob.Response instance with a new data_iter
+        """
+        on_other_server = dict()
+        filter_executed = False
+
+        data_iter = self._get_data_iter(req_resp)
 
         for key in sorted(filter_exec_list):
             filter_data = filter_exec_list[key]
             server = filter_data["execution_server"]
-            if server == self.server:
-                if method == 'get' and isinstance(req_resp, Request) and filter_executed and not isinstance(crystal_iter, InputProxy):
-                    self.logger.info('A previous filter generated a response. Ignoring filter ' + filter_data['main'])
-                    continue
+            filter_type = filter_data['type']
+            if server == self.server and filter_type == 'storlet' and STORLETS:
+                data_iter = self._execute_storlet_filter(req_resp, data_iter, filter_data)
+                filter_executed = True
 
-                if filter_data['type'] == 'storlet':
-                    """ Storlet Filter Execution """
-                    if STORLETS_INSTALLED:
-                        if not storlet_filter:
-                            storlet_filter = self._setup_storlet_gateway(self.conf,
-                                                                         self.logger,
-                                                                         request_data)
-                        # setting the default supported language TODO: support python storlets
-                        filter_data['language'] = 'java'
-                        crystal_iter = storlet_filter.execute(req_resp,
-                                                              filter_data,
-                                                              crystal_iter)
-                        filter_executed = True
-                    else:
-                        pass
-
-                else:
-                    """ Native Filter execution """
-                    self.logger.info('Go to execute native'
-                                     ' filter: ' + filter_data['main'])
-
-                    native_filter = self._load_native_filter(filter_data)
-                    crystal_iter = native_filter.execute(req_resp, crystal_iter,
-                                                         request_data)
-
-                    filter_executed = True
+            elif server == self.server and filter_type == 'native':
+                data_iter = self._execute_native_filter(req_resp, data_iter, filter_data)
+                filter_executed = True
 
             else:
                 on_other_server[key] = filter_exec_list[key]
@@ -111,10 +105,9 @@ class CrystalFilterControl(object):
         if on_other_server:
             req_resp.headers['crystal/filters'] = json.dumps(on_other_server)
 
-        if filter_executed:
-            if isinstance(req_resp, Request):
-                req_resp.environ['wsgi.input'] = crystal_iter
-            else:
-                req_resp.app_iter = crystal_iter
+        if filter_executed and isinstance(req_resp, Request):
+            req_resp.environ['wsgi.input'] = data_iter
+        else:
+            req_resp.app_iter = data_iter
 
         return req_resp

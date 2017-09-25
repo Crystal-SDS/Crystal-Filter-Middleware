@@ -53,7 +53,6 @@ class CrystalBaseHandler(object):
         self.redis_host = conf.get('redis_host')
         self.redis_port = conf.get('redis_port')
         self.redis_db = conf.get('redis_db')
-        self.cache = conf.get('cache')
 
         self.method = self.request.method.lower()
 
@@ -160,25 +159,11 @@ class CrystalBaseHandler(object):
 
         return True
 
-    def _call_filter_control_on_put(self, filter_list):
+    def _execute_filters(self, req_resp, filter_list):
         """
         Call gateway module to get result of filter execution
-        in PUT flow
         """
-        return self.filter_control.execute_filters(self.request, filter_list,
-                                                   self.app, self._api_version,
-                                                   self.account, self.container,
-                                                   self.obj, self.method)
-
-    def _call_filter_control_on_get(self, req_resp, filter_list):
-        """
-        Call gateway module to get result of filter execution
-        in GET flow
-        """
-        return self.filter_control.execute_filters(req_resp, filter_list,
-                                                   self.app, self._api_version,
-                                                   self.account, self.container,
-                                                   self.obj, self.method)
+        return self.filter_control.execute_filters(req_resp, filter_list)
 
     def apply_filters_on_pre_get(self, filter_list):
         filtered_filter_list = dict()
@@ -188,7 +173,7 @@ class CrystalBaseHandler(object):
 
         if filtered_filter_list:
             self.logger.info('Go to execute filters on PRE-GET: ' + str(filtered_filter_list))
-            self._call_filter_control_on_get(self.request, filtered_filter_list)
+            self._execute_filters(self.request, filtered_filter_list)
 
     def apply_filters_on_post_get(self, resp, filter_list):
         filtered_filter_list = dict()
@@ -198,7 +183,7 @@ class CrystalBaseHandler(object):
 
         if filtered_filter_list:
             self.logger.info('Go to execute filters on POST-GET: ' + str(filtered_filter_list))
-            resp = self._call_filter_control_on_get(resp, filtered_filter_list)
+            resp = self._execute_filters(resp, filtered_filter_list)
 
         return resp
 
@@ -210,7 +195,7 @@ class CrystalBaseHandler(object):
 
         if filtered_filter_list:
             self.logger.info('Go to execute filters on PRE-PUT: ' + str(filtered_filter_list))
-            self.request = self._call_filter_control_on_put(filtered_filter_list)
+            self.request = self._execute_filters(self.request, filtered_filter_list)
 
             if 'CONTENT_LENGTH' in self.request.environ:
                 self.request.environ.pop('CONTENT_LENGTH')

@@ -28,8 +28,9 @@ After that, it is necessary to configure OpenStack Swift to add the middleware t
 [filter:crystal_filter_handler]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = proxy
-os_identifier = proxy
-redis_host = changeme
+
+# Redis Configuration
+redis_host = controller
 redis_port = 6379
 redis_db = 0
 
@@ -47,8 +48,9 @@ storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 [filter:crystal_filter_handler]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = object
-os_identifier = os1
-redis_host = changeme
+
+# Redis Configuration
+redis_host = controller
 redis_port = 6379
 redis_db = 0
 
@@ -60,8 +62,6 @@ storlet_execute_on_proxy_only = false
 storlet_gateway_module = docker
 storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 ```
-Each object server must have a different `os_identifier` value (e.g.: `os1`, `os2`, ...)
-
 
 * Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be added after `keystoneauth` and `crystal_metric_handler` filters and before `slo`, `proxy-logging` and `proxy-server` filters.
 
