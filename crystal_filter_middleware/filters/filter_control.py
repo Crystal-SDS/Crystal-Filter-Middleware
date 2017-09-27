@@ -27,10 +27,8 @@ class CrystalFilterControl(object):
         self.conf = conf
         self.server = self.conf.get('execution_server')
 
-        # Add source directories to sys path
-        global_native_filters_path = self.conf.get('global_native_filters_path')
+        # Add source directory to sys path
         native_filters_path = self.conf.get('native_filters_path')
-        sys.path.insert(0, global_native_filters_path)
         sys.path.insert(0, native_filters_path)
 
     def _setup_storlet_gateway(self, conf, logger):

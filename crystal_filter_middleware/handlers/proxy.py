@@ -42,14 +42,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
             object_type = mimetypes.guess_type(self.request.environ['PATH_INFO'])[0]
         return object_type
 
-    @property
-    def is_proxy_runnable(self, resp):
-        # SLO / proxy only case:
-        # storlet to be invoked now at proxy side:
-        runnable = any([self.is_range_request, self.is_slo_response(resp),
-                        self.conf['storlet_execute_on_proxy_only']])
-        return runnable
-
     def handle_request(self):
 
         if self.is_crystal_valid_request and hasattr(self, self.request.method):
@@ -84,119 +76,83 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         return correct_type and correct_size
 
+    def _parse_filter_metadata(self, filter_metadata):
+        """
+        This method parses the filter metadata
+        """
+        filter_name = filter_metadata['filter_name']
+        language = filter_metadata["language"]
+        server = filter_metadata["execution_server"]
+        reverse = filter_metadata["execution_server_reverse"]
+        params = filter_metadata["params"]
+        filter_id = filter_metadata["filter_id"]
+        filter_type = filter_metadata["filter_type"]
+        filter_main = filter_metadata["main"]
+        filter_dep = filter_metadata["dependencies"]
+        filter_size = filter_metadata["content_length"]
+        has_reverse = filter_metadata["has_reverse"]
+
+        if filter_metadata["is_pre_" + self.method] and \
+           filter_metadata["is_post_" + self.method]:
+            when = "on_both_" + self.method
+        elif filter_metadata["is_pre_" + self.method]:
+            when = "on_pre_" + self.method
+        elif filter_metadata["is_post_" + self.method]:
+            when = "on_post_" + self.method
+
+        filter_data = {'name': filter_name,
+                       'language': language,
+                       'params': self._parse_csv_params(params),
+                       'execution_server': server,
+                       'execution_server_reverse': reverse,
+                       'id': filter_id,
+                       'type': filter_type,
+                       'main': filter_main,
+                       'dependencies': filter_dep,
+                       'size': filter_size,
+                       'has_reverse': has_reverse,
+                       'when': when}
+
+        return filter_data
+
     def _build_filter_execution_list(self):
-        filter_execution_list = dict()
+        """
+        This method builds the filter execution list (ordered).
+        """
+        filter_execution_list = {}
 
         ''' Parse global filters '''
         for _, filter_metadata in self.global_filters.items():
             filter_metadata = json.loads(filter_metadata)
-            if (filter_metadata["is_pre_" + self.method] or
-                    filter_metadata["is_post_" + self.method]):
+            if filter_metadata["is_pre_" + self.method] or \
+               filter_metadata["is_post_" + self.method]:
 
-                filter_main = filter_metadata["main"]
-                filter_type = filter_metadata["filter_type"]
-                server = filter_metadata["execution_server"]
-                filter_dep = filter_metadata["dependencies"]
-                has_reverse = filter_metadata["has_reverse"]
-                reverse = filter_metadata["execution_server_reverse"]
+                filter_data = self._parse_filter_metadata(filter_metadata)
                 order = filter_metadata["execution_order"]
-
-                if filter_metadata["is_pre_" + self.method] and \
-                        filter_metadata["is_post_" + self.method]:
-                    when = "on_both_" + self.method
-                elif filter_metadata["is_pre_" + self.method]:
-                    when = "on_pre_" + self.method
-                elif filter_metadata["is_post_" + self.method]:
-                    when = "on_post_" + self.method
-
-                filter_data = {'main': filter_main,
-                               'execution_server': server,
-                               'execution_server_reverse': reverse,
-                               'type': filter_type,
-                               'dependencies': filter_dep,
-                               'has_reverse': has_reverse,
-                               'when': when}
-
                 filter_execution_list[int(order)] = filter_data
 
-        # storlet_request = False
-        # if 'X-Run-Storlet' in self.request.headers:
-        #     storlet_request = True
-        #     storlet = self.request.headers.pop('X-Run-Storlet')
+        ''' Parse Project specific filters'''
+        for _, filter_metadata in self.filter_list.items():
+            filter_metadata = json.loads(filter_metadata)
 
-        crystal_callable_request = False
-        if 'X-Crystal-Run-Filter' in self.request.headers:
-            crystal_callable_request = True
-            callable_storlet = self.request.headers.pop('X-Crystal-Run-Filter')
+            if filter_metadata["is_pre_" + self.method] or \
+               filter_metadata["is_post_" + self.method]:
+                filter_data = self._parse_filter_metadata(filter_metadata)
+                order = filter_metadata["execution_order"]
 
-        ''' Parse filter list (Storlet and Native)'''
-        if self.filter_list:
-            for _, filter_metadata in self.filter_list.items():
-                filter_metadata = json.loads(filter_metadata)
-
-                if filter_metadata["is_pre_" + self.method] or \
-                   filter_metadata["is_post_" + self.method]:
-
-                    if self._check_size_type(filter_metadata):
-                        filter_name = filter_metadata['filter_name']
-                        server = filter_metadata["execution_server"]
-                        reverse = filter_metadata["execution_server_reverse"]
-                        params = filter_metadata["params"]
-                        filter_id = filter_metadata["filter_id"]
-                        filter_type = filter_metadata["filter_type"]
-                        filter_main = filter_metadata["main"]
-                        filter_dep = filter_metadata["dependencies"]
-                        filter_size = filter_metadata["content_length"]
-                        has_reverse = filter_metadata["has_reverse"]
-                        filter_callable = filter_metadata["callable"]
-
-                        if filter_metadata["is_pre_" + self.method] and \
-                           filter_metadata["is_post_" + self.method]:
-                            when = "on_both_" + self.method
-                        elif filter_metadata["is_pre_" + self.method]:
-                            when = "on_pre_" + self.method
-                        elif filter_metadata["is_post_" + self.method]:
-                            when = "on_post_" + self.method
-
-                        filter_data = {'name': filter_name,
-                                       'params': self._parse_csv_params(params),
-                                       'execution_server': server,
-                                       'execution_server_reverse': reverse,
-                                       'id': filter_id,
-                                       'type': filter_type,
-                                       'main': filter_main,
-                                       'dependencies': filter_dep,
-                                       'size': filter_size,
-                                       'has_reverse': has_reverse,
-                                       'when': when}
-
-                        launch_key = int(filter_metadata["execution_order"]) +\
-                            len(filter_execution_list)
-
-                        filter_execution_list[launch_key] = filter_data
-
-                        # if storlet_request:
-                        #     if storlet == filter_data['name']:
-                        #         self.request.headers['X-Run-Storlet'] = storlet
-                        #         filter_execution_list.pop(launch_key)
-
-                        # self.logger.info('' + filter_data['name'])
-                        if filter_callable:
-                            # self.logger.info('' + filter_data['name'] + ' is callable')
-                            if crystal_callable_request and callable_storlet == filter_data['name']:
-                                filter_data['params'] = self._parse_headers_params()  # overwrite params with those on headers
-                                # self.logger.info('' + filter_data['name'] + ' - Parameters parsed')
-                            else:
-                                # Remove from execution list (either not called by request or the call is not for this filter)
-                                # self.logger.info('' + filter_data['name'] + ' - No parameters')
-                                filter_execution_list.pop(launch_key)
+                filter_execution_list[order] = filter_data
 
         return filter_execution_list
 
     def _format_crystal_metadata(self, crystal_md):
+        """
+        This method generates the metadata that will be stored alongside the
+        object in the PUT requests. It allows the reverse case of the filters
+        without querying the centralized controller.
+        """
         for key in crystal_md["filter-list"].keys():
             cfilter = crystal_md["filter-list"][key]
-            if cfilter['type'] != 'global' and cfilter['has_reverse']:
+            if cfilter['has_reverse']:
                 cfilter.pop('has_reverse')
                 cfilter['when'] = 'on_post_get'
                 current_params = cfilter['params']
@@ -213,6 +169,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
         return crystal_md
 
     def _set_crystal_metadata(self, filter_exec_list):
+        """
+        This method generates the metadata that will be stored alongside the
+        object in the PUT requests. It allows the reverse case of the filters
+        without querying the centralized controller.
+        """
         crystal_md = {}
         crystal_md["original-etag"] = self.request.headers.get('ETag', '')
         crystal_md["original-size"] = self.request.headers.get('Content-Length', '')
@@ -256,13 +217,13 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
-            filter_list = self._build_filter_execution_list()
-            self.logger.info('' + str(filter_list))
-            self.request.headers['crystal/filters'] = json.dumps(filter_list)
-            self.apply_filters_on_pre_get(filter_list)
+            filter_exec_list = self._build_filter_execution_list()
+            self.logger.info('' + str(filter_exec_list))
+            self.request.headers['crystal/filters'] = json.dumps(filter_exec_list)
+            self.apply_filters_on_pre_get(filter_exec_list)
 
         if not isinstance(self.request.environ['wsgi.input'], InputProxy):
-            if not hasattr(self.request, 'response_headers') or not self.request.response_headers:
+            if not hasattr(self.request, 'response_headers'):
                 self.request.response_headers = None
             return Response(app_iter=self.request.environ['wsgi.input'],
                             headers=self.request.response_headers,
@@ -296,11 +257,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.global_filters or self.filter_list:
             self.logger.info('There are Filters to execute')
-            filter_list = self._build_filter_execution_list()
-            self.logger.info('' + str(filter_list))
-            if filter_list:
-                self._set_crystal_metadata(filter_list)
-                self.apply_filters_on_pre_put(filter_list)
+            filter_exec_list = self._build_filter_execution_list()
+            self.logger.info('' + str(filter_exec_list))
+            if filter_exec_list:
+                self._set_crystal_metadata(filter_exec_list)
+                self.apply_filters_on_pre_put(filter_exec_list)
         else:
             self.logger.info('No filters to execute')
 

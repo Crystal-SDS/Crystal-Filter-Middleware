@@ -6,7 +6,7 @@ from swift.common.utils import get_logger
 from crystal_filter_middleware.handlers import CrystalProxyHandler
 from crystal_filter_middleware.handlers import CrystalObjectHandler
 from crystal_filter_middleware.handlers.base import NotCrystalRequest
-from crystal_filter_middleware.filters.control import CrystalFilterControl
+from crystal_filter_middleware.filters.filter_control import CrystalFilterControl
 
 import ConfigParser
 import redis
@@ -49,7 +49,7 @@ class CrystalHandlerMiddleware(object):
             request_handler = self.handler_class(req, self.conf,
                                                  self.app, self.logger,
                                                  self.filter_control)
-            self.logger.debug('call in %s: with %s/%s/%s' %
+            self.logger.debug('call in %s-server with %s/%s/%s' %
                               (self.exec_server, request_handler.account,
                                request_handler.container, request_handler.obj))
         except HTTPException:
@@ -79,8 +79,6 @@ def filter_factory(global_conf, **local_conf):
     conf['redis_port'] = int(conf.get('redis_port', 6379))
     conf['redis_db'] = int(conf.get('redis_db', 0))
 
-    conf['global_native_filters_path'] = conf.get('global_native_filters_path',
-                                                  '/opt/crystal/global_native_filters')
     conf['native_filters_path'] = conf.get('native_filters_path',
                                            '/opt/crystal/native_filters')
 
@@ -119,7 +117,7 @@ def filter_factory(global_conf, **local_conf):
           t = redis.call('HGETALL', 'pipeline:'..ARGV[1])
         end
         t[#t+1] = '@@@@'
-        local t3 = redis.call('HGETALL', 'global_filters')
+        local t3 = redis.call('HGETALL', 'pipeline:global')
         for i=1,#t3 do
           t[#t+1] = t3[i]
         end
