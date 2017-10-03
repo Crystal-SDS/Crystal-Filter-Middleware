@@ -83,34 +83,48 @@ class CrystalProxyHandler(CrystalBaseHandler):
         filter_name = filter_metadata['filter_name']
         language = filter_metadata["language"]
         server = filter_metadata["execution_server"]
-        reverse = filter_metadata["execution_server_reverse"]
         params = filter_metadata["params"]
-        filter_id = filter_metadata["filter_id"]
         filter_type = filter_metadata["filter_type"]
         filter_main = filter_metadata["main"]
         filter_dep = filter_metadata["dependencies"]
         filter_size = filter_metadata["content_length"]
-        has_reverse = filter_metadata["has_reverse"]
+        reverse = filter_metadata["reverse"]
 
-        if filter_metadata["is_pre_" + self.method] and \
-           filter_metadata["is_post_" + self.method]:
-            when = "on_both_" + self.method
-        elif filter_metadata["is_pre_" + self.method]:
-            when = "on_pre_" + self.method
-        elif filter_metadata["is_post_" + self.method]:
-            when = "on_post_" + self.method
+        when = filter_metadata[self.method]
+
+        if filter_type == 'storlet':
+            if self.method == 'put':
+                when = 'on_pre_put'
+            elif self.method == 'get':
+                when = 'on_post_get'
+        else:
+            if when == 'Request':
+                when = 'on_pre_'+self.method
+            if when == 'Response':
+                when = 'on_post_'+self.method
+            if when == 'Request/Response':
+                when = "on_both_"+self.method
+
+        if server == 'Proxy Node':
+            server = 'proxy'
+        elif server == 'Storage Node':
+            server = 'object'
+
+        if reverse:
+            if reverse == 'Proxy Node':
+                reverse = 'proxy'
+            elif reverse == 'Storage Node':
+                reverse = 'object'
 
         filter_data = {'name': filter_name,
                        'language': language,
                        'params': self._parse_csv_params(params),
                        'execution_server': server,
-                       'execution_server_reverse': reverse,
-                       'id': filter_id,
+                       'reverse': reverse,
                        'type': filter_type,
                        'main': filter_main,
                        'dependencies': filter_dep,
                        'size': filter_size,
-                       'has_reverse': has_reverse,
                        'when': when}
 
         return filter_data
@@ -124,8 +138,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         ''' Parse global filters '''
         for _, filter_metadata in self.global_filters.items():
             filter_metadata = json.loads(filter_metadata)
-            if filter_metadata["is_pre_" + self.method] or \
-               filter_metadata["is_post_" + self.method]:
+            if filter_metadata[self.method]:
 
                 filter_data = self._parse_filter_metadata(filter_metadata)
                 order = filter_metadata["execution_order"]
@@ -135,8 +148,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         for _, filter_metadata in self.filter_list.items():
             filter_metadata = json.loads(filter_metadata)
 
-            if filter_metadata["is_pre_" + self.method] or \
-               filter_metadata["is_post_" + self.method]:
+            if filter_metadata[self.method]:
                 filter_data = self._parse_filter_metadata(filter_metadata)
                 order = filter_metadata["execution_order"]
 
@@ -152,8 +164,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         for key in crystal_md["filter-list"].keys():
             cfilter = crystal_md["filter-list"][key]
-            if cfilter['has_reverse']:
-                cfilter.pop('has_reverse')
+            if cfilter['reverse']:
                 cfilter['when'] = 'on_post_get'
                 current_params = cfilter['params']
                 if current_params:
@@ -161,8 +172,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 else:
                     cfilter['params'] = {'reverse': 'True'}
 
-                cfilter['execution_server'] = cfilter['execution_server_reverse']
-                cfilter.pop('execution_server_reverse')
+                cfilter['execution_server'] = cfilter['reverse']
+                cfilter.pop('reverse')
             else:
                 crystal_md["filter-list"].pop(key)
 
