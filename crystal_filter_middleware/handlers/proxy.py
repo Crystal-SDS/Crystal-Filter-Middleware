@@ -105,17 +105,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
             if when == 'Request/Response':
                 when = "on_both_"+self.method
 
-        if server == 'Proxy Node':
-            server = 'proxy'
-        elif server == 'Storage Node':
-            server = 'object'
-
-        if reverse:
-            if reverse == 'Proxy Node':
-                reverse = 'proxy'
-            elif reverse == 'Storage Node':
-                reverse = 'object'
-
         filter_data = {'name': filter_name,
                        'language': language,
                        'params': self._parse_csv_params(params),
