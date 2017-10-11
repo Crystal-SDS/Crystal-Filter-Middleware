@@ -33,6 +33,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         self.filter_list = dict(zip(redis_list[0:index:2], redis_list[1:index:2]))
         self.global_filters = dict(zip(redis_list[index+1::2], redis_list[index+2::2]))
 
+        if self.global_filters or self.filter_list:
+            self.filter_exec_list = self._build_filter_execution_list()
+
     def _parse_vaco(self):
         return self.request.split_path(4, 4, rest_with_last=True)
 
@@ -215,12 +218,14 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Etag' in self.request.headers.keys():
             self.etag = self.request.headers.pop('Etag')
 
-        if self.global_filters or self.filter_list:
+        if self.filter_exec_list:
             self.logger.info('There are Filters to execute')
-            filter_exec_list = self._build_filter_execution_list()
-            self.logger.info('' + str(filter_exec_list))
-            self.request.headers['crystal/filters'] = json.dumps(filter_exec_list)
-            self.apply_filters_on_pre_get(filter_exec_list)
+            self.logger.info(str(self.filter_exec_list))
+            json_filters = json.dumps(self.filter_exec_list)
+            self.request.headers['crystal/filters'] = json_filters
+            self.apply_filters_on_pre_get(self.filter_exec_list)
+        else:
+            self.logger.info('No Filters to execute')
 
         if not isinstance(self.request.environ['wsgi.input'], InputProxy):
             if not hasattr(self.request, 'response_headers'):
@@ -255,13 +260,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if 'Etag' in self.request.headers.keys():
             self.etag = self.request.headers.pop('Etag')
 
-        if self.global_filters or self.filter_list:
+        if self.filter_exec_list:
             self.logger.info('There are Filters to execute')
-            filter_exec_list = self._build_filter_execution_list()
-            self.logger.info('' + str(filter_exec_list))
-            if filter_exec_list:
-                self._set_crystal_metadata(filter_exec_list)
-                self.apply_filters_on_pre_put(filter_exec_list)
+            self.logger.info(str(self.filter_exec_list))
+            self._set_crystal_metadata(self.filter_exec_list)
+            self.apply_filters_on_pre_put(self.filter_exec_list)
         else:
             self.logger.info('No filters to execute')
 
