@@ -2,14 +2,12 @@ from swift.common.swob import HTTPInternalServerError
 from swift.common.swob import HTTPException
 from swift.common.swob import wsgify
 from swift.common.utils import get_logger
-
 from crystal_filter_middleware.handlers import CrystalProxyHandler
 from crystal_filter_middleware.handlers import CrystalObjectHandler
 from crystal_filter_middleware.handlers.base import NotCrystalRequest
-from crystal_filter_middleware.filters.filter_control import CrystalFilterControl
-
 import ConfigParser
 import redis
+import sys
 
 try:
     import storlets
@@ -29,11 +27,6 @@ class CrystalHandlerMiddleware(object):
                                  log_route='crystal_filter_handler')
         self.handler_class = self._get_handler(self.exec_server)
 
-        ''' Singleton instance of filter control '''
-        self.control_class = CrystalFilterControl
-        self.filter_control = self.control_class(conf=self.conf,
-                                                 log=self.logger)
-
     def _get_handler(self, exec_server):
         if exec_server == 'proxy':
             return CrystalProxyHandler
@@ -47,8 +40,7 @@ class CrystalHandlerMiddleware(object):
     def __call__(self, req):
         try:
             request_handler = self.handler_class(req, self.conf,
-                                                 self.app, self.logger,
-                                                 self.filter_control)
+                                                 self.app, self.logger)
             self.logger.debug('call in %s-server with %s/%s/%s' %
                               (self.exec_server, request_handler.account,
                                request_handler.container, request_handler.obj))
@@ -82,6 +74,10 @@ def filter_factory(global_conf, **local_conf):
     conf['native_filters_path'] = conf.get('native_filters_path',
                                            '/opt/crystal/native_filters')
 
+    # Add source directory to sys path
+    native_filters_path = conf.get('native_filters_path')
+    sys.path.insert(0, native_filters_path)
+
     """
     Storlets Configuration
     """
@@ -109,9 +105,7 @@ def filter_factory(global_conf, **local_conf):
                           conf['redis_db'])
     lua = """
         local t = {}
-        if redis.call('EXISTS', 'pipeline:'..ARGV[1]..':'..ARGV[2]..':'..ARGV[3])==1 then
-          t = redis.call('HGETALL', 'pipeline:'..ARGV[1]..':'..ARGV[2]..':'..ARGV[3])
-        elseif redis.call('EXISTS', 'pipeline:'..ARGV[1]..':'..ARGV[2])==1 then
+        if redis.call('EXISTS', 'pipeline:'..ARGV[1]..':'..ARGV[2])==1 then
           t = redis.call('HGETALL', 'pipeline:'..ARGV[1]..':'..ARGV[2])
         elseif redis.call('EXISTS', 'pipeline:'..ARGV[1])==1 then
           t = redis.call('HGETALL', 'pipeline:'..ARGV[1])

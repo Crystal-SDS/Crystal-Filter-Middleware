@@ -1,5 +1,10 @@
 from swift.proxy.controllers.base import get_account_info
 from swift.common.utils import config_true_value
+try:
+    from crystal_filter_middleware.filters.storlet import StorletFilter
+    STORLETS = True
+except:
+    STORLETS = False
 import redis
 
 
@@ -35,7 +40,7 @@ class CrystalBaseHandler(object):
     """
     request = _request_instance_property()
 
-    def __init__(self, request, conf, app, logger, filter_control):
+    def __init__(self, request, conf, app, logger):
         """
         :param request: swob.Request instance
         :param conf: gateway conf dict
@@ -48,7 +53,6 @@ class CrystalBaseHandler(object):
         self.app = app
         self.logger = logger
         self.conf = conf
-        self.filter_control = filter_control
 
         self.redis_host = conf.get('redis_host')
         self.redis_port = conf.get('redis_port')
@@ -159,44 +163,28 @@ class CrystalBaseHandler(object):
 
         return True
 
-    def _execute_filters(self, req_resp, filter_list):
-        """
-        Call gateway module to get result of filter execution
-        """
-        return self.filter_control.execute_filters(req_resp, filter_list)
+    def _load_native_filter(self, app, conf):
+        filter_data = conf['filter_data']
+        modulename = filter_data['name'].split('.')[0]
+        classname = filter_data['main']
+        m = __import__(modulename, globals(),
+                       locals(), [classname])
+        m_class = getattr(m, classname)
+        filter_class = m_class(app, conf)
 
-    def apply_filters_on_pre_get(self, filter_list):
-        filtered_filter_list = dict()
-        for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_pre_get' or filter_data['when'] == 'on_both_get':
-                filtered_filter_list[key] = filter_data
+        return filter_class
 
-        if filtered_filter_list:
-            self.logger.info('Go to execute filters on PRE-GET: ' + str(filtered_filter_list))
-            self._execute_filters(self.request, filtered_filter_list)
+    def _build_pipeline(self, filter_exec_list):
+        app = self.app
 
-    def apply_filters_on_post_get(self, resp, filter_list):
-        filtered_filter_list = dict()
-        for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_post_get' or filter_data['when'] == 'on_both_get':
-                filtered_filter_list[key] = filter_data
+        for key in sorted(filter_exec_list, reverse=True):
+            filter_data = filter_exec_list[key]
+            filter_type = filter_data['type']
+            self.conf['filter_data'] = filter_data
 
-        if filtered_filter_list:
-            self.logger.info('Go to execute filters on POST-GET: ' + str(filtered_filter_list))
-            resp = self._execute_filters(resp, filtered_filter_list)
+            if filter_type == 'storlet' and STORLETS:
+                app = StorletFilter(app, self.conf)
+            elif filter_type == 'native':
+                app = self._load_native_filter(app, self.conf)
 
-        return resp
-
-    def apply_filters_on_pre_put(self, filter_list):
-        filtered_filter_list = dict()
-        for key, filter_data in filter_list.items():
-            if filter_data['when'] == 'on_pre_put' or filter_data['when'] == 'on_both_put':
-                filtered_filter_list[key] = filter_data
-
-        if filtered_filter_list:
-            self.logger.info('Go to execute filters on PRE-PUT: ' + str(filtered_filter_list))
-            self.request = self._execute_filters(self.request, filtered_filter_list)
-
-            if 'CONTENT_LENGTH' in self.request.environ:
-                self.request.environ.pop('CONTENT_LENGTH')
-            self.request.headers['Transfer-Encoding'] = 'chunked'
+        self.app = app

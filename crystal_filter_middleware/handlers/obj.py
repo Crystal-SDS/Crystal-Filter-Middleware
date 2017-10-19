@@ -6,12 +6,9 @@ import json
 
 class CrystalObjectHandler(CrystalBaseHandler):
 
-    def __init__(self, request, conf, app, logger, filter_control):
+    def __init__(self, request, conf, app, logger):
         super(CrystalObjectHandler, self).__init__(request, conf,
-                                                   app, logger,
-                                                   filter_control)
-
-        self.device = self.request.environ['PATH_INFO'].split('/', 2)[1]
+                                                   app, logger)
 
     def _parse_vaco(self):
         _, _, acc, cont, obj = self.request.split_path(
@@ -31,22 +28,22 @@ class CrystalObjectHandler(CrystalBaseHandler):
             return self.request.get_response(self.app)
 
     def _augment_filter_execution_list(self, filter_list):
-        new_storlet_list = {}
+        new_filter_list = {}
 
         # Reverse execution
         if filter_list:
             for key in reversed(sorted(filter_list)):
-                launch_key = len(new_storlet_list.keys())
-                new_storlet_list[launch_key] = filter_list[key]
+                launch_key = len(new_filter_list.keys())
+                new_filter_list[launch_key] = filter_list[key]
 
         # Get filter list to execute from proxy server
-        if 'crystal/filters' in self.request.headers:
-            req_filter_list = json.loads(self.request.headers.pop('crystal/filters'))
+        if 'crystal_filters' in self.request.headers:
+            req_filter_list = json.loads(self.request.headers.pop('crystal_filters'))
             for key in sorted(req_filter_list, reverse=True):
-                launch_key = len(new_storlet_list.keys())
-                new_storlet_list[launch_key] = req_filter_list[key]
+                launch_key = len(new_filter_list.keys())
+                new_filter_list[launch_key] = req_filter_list[key]
 
-        return new_storlet_list
+        return new_filter_list
 
     @public
     def GET(self):
@@ -55,16 +52,20 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         response = self.request.get_response(self.app)
 
-        filter_list = None
-        if 'X-Object-Sysmeta-Crystal' in response.headers:
-            crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
-            response.headers['ETag'] = crystal_md['original-etag']
-            response.headers['Content-Length'] = crystal_md['original-size']
-            filter_list = crystal_md.get('filter-list')
-
         if response.is_success:
+            filter_list = None
+            if 'X-Object-Sysmeta-Crystal' in response.headers:
+                crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
+                filter_list = crystal_md.get('filter-list')
+
             filter_exec_list = self._augment_filter_execution_list(filter_list)
-            response = self.apply_filters_on_post_get(response, filter_exec_list)
+            if filter_exec_list:
+                self.logger.info('There are Filters to execute')
+                self.logger.info(str(filter_exec_list))
+                self._build_pipeline(filter_exec_list)
+                return self.request.get_response(self.app)
+            else:
+                self.logger.info('No Filters to execute')
 
         return response
 
@@ -73,10 +74,41 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         PUT handler on Object Server
         """
-        # IF 'crystal/filters' is in headers, means that is needed to run a
-        # Filter on Object Server before store the object.
-        if 'crystal/filters' in self.request.headers:
-            filter_list = json.loads(self.request.headers['crystal/filters'])
-            self.apply_filters_on_pre_put(filter_list)
+        if 'crystal_filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+            self._build_pipeline(filter_exec_list)
+
+        return self.request.get_response(self.app)
+
+    @public
+    def POST(self):
+        """
+        POST handler on Object Server
+        """
+        if 'crystal_filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+            self._build_pipeline(filter_exec_list)
+
+        return self.request.get_response(self.app)
+
+    @public
+    def HEAD(self):
+        """
+        HEAD handler on Object Server
+        """
+        if 'crystal_filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+            self._build_pipeline(filter_exec_list)
+
+        return self.request.get_response(self.app)
+
+    @public
+    def DELETE(self):
+        """
+        DELETE handler on Object Server
+        """
+        if 'crystal_filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+            self._build_pipeline(filter_exec_list)
 
         return self.request.get_response(self.app)
