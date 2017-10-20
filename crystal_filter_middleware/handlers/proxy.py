@@ -89,7 +89,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         filter_name = filter_metadata['filter_name']
         language = filter_metadata["language"]
-        thread_safe = filter_metadata["execution_server"]  # change to thread_safe
         params = filter_metadata["params"]
         filter_type = filter_metadata["filter_type"]
         filter_main = filter_metadata["main"]
@@ -100,7 +99,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
         filter_data = {'name': filter_name,
                        'language': language,
                        'params': self._parse_csv_params(params),
-                       'thread_safe': thread_safe,
                        'reverse': reverse,
                        'type': filter_type,
                        'main': filter_main,
