@@ -32,6 +32,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         self.filter_list = dict(zip(redis_list[0:index:2], redis_list[1:index:2]))
         self.global_filters = dict(zip(redis_list[index+1::2], redis_list[index+2::2]))
 
+        self.proxy_filter_exec_list = {}
+        self.object_filter_exec_list = {}
+
         if self.global_filters or self.filter_list:
             self.proxy_filter_exec_list = self._build_filter_execution_list('proxy')
             self.object_filter_exec_list = self._build_filter_execution_list('object')
