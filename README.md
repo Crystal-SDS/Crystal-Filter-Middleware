@@ -23,9 +23,20 @@ sudo python setup.py install
 
 After that, it is necessary to configure OpenStack Swift to add the middleware to the proxy and object servers.
 
-* In the proxy servers, we need to add a new filter that must be called `crystal_filter_handler` in `/etc/swift/proxy-server.conf`. Copy the lines below to the bottom part of the file:
+### Proxy
+Edit the `/etc/swift/proxy-server.conf` file in each Proxy Node, and perform the following changes:
+
+1. Add the Crystal Metric Middleware to the pipeline variable. This filter must be added before the `slo` filter.
+
 ```ini
-[filter:crystal_filter_handler]
+[pipeline:main]
+pipeline = catch_errors gatekeeper healthcheck proxy-logging cache container_sync bulk ratelimit authtoken crystal_acl keystoneauth container-quotas account-quotas crystal_metrics crystal_filters copy slo dlo proxy-logging proxy-server
+
+```
+
+2. Add the configuration of the filter. Copy the lines below to the bottom part of the file:
+```ini
+[filter:crystal_filters]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = proxy
 
@@ -43,9 +54,20 @@ storlet_gateway_module = docker
 storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 ```
 
-* In the object servers, we need to add a new filter that must be called `crystal_filter_handler` in `/etc/swift/object-server.conf`. Copy the lines below to the bottom part of the file:
+### Storage Node
+
+Edit the `/etc/swift/object-server.conf` file in each Storage Node, and perform the following changes:
+
+1. Add the Crystal Metric Middleware to the pipeline variable. This filter must be added before the `object-server` filter.
 ```ini
-[filter:crystal_filter_handler]
+[pipeline:main]
+pipeline = healthcheck recon crystal_metrics crystal_filters object-server
+
+```
+
+2. Add the configuration of the filter. Copy the lines below to the bottom part of the file:
+```ini
+[filter:crystal_filters]
 use = egg:swift_crystal_filter_middleware#crystal_filter_handler
 execution_server = object
 
@@ -63,7 +85,7 @@ storlet_gateway_module = docker
 storlet_gateway_conf = /etc/swift/storlet_docker_gateway.conf
 ```
 
-* Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be added after `keystoneauth` and `crystal_metric_handler` filters and before `slo`, `proxy-logging` and `proxy-server` filters.
+* Also it is necessary to add this filter to the pipeline variable in the same files. This filter must be added after `keystoneauth` and `crystal_metrics` filters and before `slo`, `proxy-logging` and `proxy-server` filters.
 
 * The last step is to restart the proxy-server/object-server service:
 ```bash
@@ -77,7 +99,7 @@ There are two differentiated kinds of filters:
  
 * [Storlet](https://github.com/openstack/storlets) filters: Java classes that implement the IStorlet interface and are able to intercept and modify the data flow of GET/PUT requests in a secure and isolated manner.
 
-* Native filters: python classes that can intercept GET/PUT requests at all the possible life-cycle stages offered by Swift.
+* Native filters: python classes that can intercept all method requests at all the possible life-cycle stages offered by Swift.
 
 ![alt text](http://crystal-sds.org/wp-content/uploads/2016/10/crystal_filters_diagram2_small.png "Crystal filters")
 
@@ -88,7 +110,42 @@ Filter classes must be registered through [Crystal controller API](https://githu
 
 A convenient [web dashboard](https://github.com/iostackproject/SDS-dashboard) is also available to simplify Crystal controller API calls.
 
-There is a repository that includes some [filter samples](https://github.com/Crystal-SDS/filter-samples) for compression, encryption, caching, bandwidth differentiation, ...
+There is a repository that includes some [filter samples](https://github.com/Crystal-SDS/filter-samples) for compression, encryption, caching, bandwidth differentiation, etc.
+
+### Native filters
+
+Native filters are [Swift middlewares](https://docs.openstack.org/swift/latest/development_middleware.html), but dynamically managed by Crystal. The `parameters` parameter is a dictionary that contains the parameters introduced by the [Crystal dashboard](https://github.com/Crystal-SDS/dashboard).
+
+The code below is an example of a native filter:
+
+```python
+class NopFilter(object):
+
+    def __init__(self, app, conf):
+        self.app = app
+        self.conf = conf
+        self.logger = get_logger(self.conf, log_route='nop_filter')
+        self.filter_data = self.conf['filter_data']
+        self.parameters = self.filter_data['params']
+
+        self.register_info()
+
+    def register_info(self):
+        register_swift_info('nop_filter')
+
+    @wsgify
+    def __call__(self, req):
+        return req.get_response(self.app)
+
+
+	def filter_factory(global_conf, **local_conf):
+	    conf = global_conf.copy()
+	    conf.update(local_conf)
+	
+	    def noop_filter(app):
+	        return NoopFilter(app, conf)
+	    return noop_filter
+```
 
 ### Storlet filters
 
@@ -155,53 +212,6 @@ Notice that `setMetadata()` must be called. Also, it must be called before writi
 The `StorletLogger` class supports a single method called `emitLog()`, and accepts a String. 
 
 For more information on writing and deploy Storlets, please refer to [Storlets documentation](http://storlets.readthedocs.io/en/latest/writing_and_deploying_java_storlets.html). 
-
-### Native filters
-
-The code below is an example of a native filter:
-
-```python
-class NativeFilterExample(AbstractFilter):
-    
-    def __init__(self, global_conf, filter_conf, logger):
-        super(NativeFilterExample, self).__init__(global_conf, filter_conf, logger)
-    
-    # This method is called by the middleware to allow filters to intercept GET/PUT requests life-cycle
-    def _apply_filter(self, req_resp, data_iter, parameters):
-        method = req_resp.environ['REQUEST_METHOD']
-        
-        if method == 'get':
-            if isinstance(req_resp, Request):
-                # ...
-                # Filter code for GET requests should be placed here
-                # ...
-            elif isinstance(req_resp, Response):
-                # ...
-                # Filter code for GET responses should be placed here (the response includes 
-                # the object data in this phase)
-                # ...
-        elif method == 'put':
-            if isinstance(req_resp, Request):
-                # ...
-                # Filter code for PUT requests should be placed here (the request includes 
-                # the object data in this phase)
-                # ...
-            elif isinstance(req_resp, Response):
-                # ...
-                # Filter code for PUT responses should be placed here
-                # ...
-
-        return data_iter
-```
-
-The `_apply_filter()` method is called by the middleware at all life-cycle stages of the request/response. The `req_resp` parameter can be the swift.common.swob.Request or swift.common.swob.Response depending on the life-cycle phase the method is called.
-Upon registering the filter through Crystal controller, you can specify which server and life-cycle phase the filter will be called at, depending on the type of required computation or data-manipulation. For example, a caching filter should be executed at proxy servers, intercepting both the PUT and GET requests before reaching the object server (at request phase).
-
-The `data_iter` parameter is an iterator of the data stream to be processed. The `_apply_filter()` method must return the `data_iter` or a modified data stream because the successive filters must receive an iterator to operate correctly, in turn. 
-
-The `parameters` parameter is a dictionary that contains the parameters introduced by the dashboard.
-
-Take a look to the [Filter Samples](https://github.com/Crystal-SDS/filter-samples) repository for more examples.
 
 
 ## Support
