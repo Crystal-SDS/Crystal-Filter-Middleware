@@ -226,6 +226,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         response = self.request.get_response(self.app)
 
+        if 'Content-Length' in response.headers:
+            response.headers.pop('Content-Length')
+        if 'Transfer-Encoding' in response.headers:
+            response.headers.pop('Transfer-Encoding')
+
         if self.etag:
             response.headers['etag'] = self.etag
 
