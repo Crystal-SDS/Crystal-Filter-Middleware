@@ -1,5 +1,6 @@
 from crystal_filter_middleware.handlers import CrystalBaseHandler
 from swift.common.swob import HTTPMethodNotAllowed
+from swift.common.wsgi import make_subrequest
 from swift.common.utils import public
 import mimetypes
 import operator
@@ -42,12 +43,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
     def _parse_vaco(self):
         return self.request.split_path(4, 4, rest_with_last=True)
 
-    def _get_object_type(self):
-        object_type = self.request.headers['Content-Type']
-        if not object_type:
-            object_type = mimetypes.guess_type(self.request.environ['PATH_INFO'])[0]
-        return object_type
-
     def handle_request(self):
 
         if self.is_crystal_valid_request and hasattr(self, self.request.method):
@@ -62,29 +57,67 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.logger.info('Request disabled for Crystal')
             return self.request.get_response(self.app)
 
-    def _check_size_type_tag(self, filter_metadata):
+    def _get_object_type(self, metadata):
+        object_type = metadata['Content-Type']
+        if not object_type:
+            object_type = mimetypes.guess_type(self.request.environ['PATH_INFO'])[0]
+        return object_type
+
+    def _check_conditions(self, filter_metadata):
+        """
+        This method ckecks the object_tag, object_type and object_size parameters
+        introduced by the dashborad to run the filter.
+        """
+        if not filter_metadata['object_type'] and \
+           not filter_metadata['object_tag'] and \
+           not filter_metadata['object_size']:
+            return True
+
+        metadata = {}
+        if self.method == 'put':
+            for key in self.request.headers.keys():
+                metadata[key] = self.request.headers.get(key)
+        else:
+            sub_req = make_subrequest(self.request.environ, method='HEAD',
+                                      path=self.request.path_info,
+                                      headers=self.request.headers,
+                                      swift_source='Crystal Filter Middleware')
+            resp = sub_req.get_response(self.app)
+            metadata = resp.headers
 
         correct_type = True
         correct_size = True
-        correct_tag = True
+        correct_tags = True
 
-        if filter_metadata['object_type']:
-            obj_type = filter_metadata['object_type']
-            correct_type = self._get_object_type() in \
-                self.redis.lrange("object_type:" + obj_type, 0, -1)
+        try:
+            if filter_metadata['object_type']:
+                obj_type = filter_metadata['object_type']
+                correct_type = self._get_object_type(metadata) in \
+                    self.redis.lrange("object_type:" + obj_type, 0, -1)
 
-        if filter_metadata['object_tag']:
-            obj_tag = filter_metadata['object_tag']
-            correct_tag = 'X-Object-Meta-'+obj_tag in self.request.headers
+            if filter_metadata['object_tag']:
+                tags = filter_metadata['object_tag'].split(',')
+                tag_checking = list()
+                for tag in tags:
+                    key, value = tag.split(':')
+                    correct_tag = ('X-Object-Meta-'+key in metadata and
+                                   metadata['X-Object-Meta-'+key] == value) or \
+                                  ('X-Object-Sysmeta-'+key in metadata and
+                                   metadata['X-Object-Sysmeta-'+key] == value)
+                    tag_checking.append(correct_tag)
+                correct_tags = all(tag_checking)
 
-        if filter_metadata['object_size']:
-            object_size = filter_metadata['object_size']
-            op = mappings[object_size[0]]
-            obj_lenght = int(object_size[1])
-            correct_size = op(int(self.request.headers['Content-Length']),
-                              obj_lenght)
+            if filter_metadata['object_size']:
+                object_size = filter_metadata['object_size']
+                op = mappings[object_size[0]]
+                obj_lenght = int(object_size[1])
+                correct_size = op(int(metadata['Content-Length']),
+                                  obj_lenght)
+        except Exception as e:
+            self.logger.error(str(e))
+            return False
 
-        return correct_type and correct_size and correct_tag
+        return correct_type and correct_size and correct_tags
 
     def _parse_filter_metadata(self, filter_metadata):
         """
@@ -120,7 +153,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
         for _, filter_metadata in self.global_filters.items():
             filter_metadata = json.loads(filter_metadata)
             if self.method in filter_metadata and filter_metadata[self.method] \
-               and filter_metadata['execution_server'] == server:
+               and filter_metadata['execution_server'] == server \
+               and self._check_conditions(filter_metadata):
                 filter_data = self._parse_filter_metadata(filter_metadata)
                 order = filter_metadata["execution_order"]
                 filter_execution_list[int(order)] = filter_data
@@ -129,7 +163,8 @@ class CrystalProxyHandler(CrystalBaseHandler):
         for _, filter_metadata in self.filter_list.items():
             filter_metadata = json.loads(filter_metadata)
             if self.method in filter_metadata and filter_metadata[self.method] \
-               and filter_metadata['execution_server'] == server:
+               and filter_metadata['execution_server'] == server \
+               and self._check_conditions(filter_metadata):
                 filter_data = self._parse_filter_metadata(filter_metadata)
                 order = filter_metadata["execution_order"]
 
