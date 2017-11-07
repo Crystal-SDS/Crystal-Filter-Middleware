@@ -226,13 +226,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
         for index in range(len(params)):
             if len(params) > index+1:
                 if index == 0:
-                    print params[index]
                     params_dict[params[index]] = params[index+1].rsplit(',', 1)[0]
+                elif index < len(params):
+                    params_dict[params[index].rsplit(',', 1)[1]] = params[index+1].rsplit(',', 1)[0]
                 else:
-                    if "=" in params[index+1].rsplit(',', 1)[0]:
-                        params_dict[params[index].rsplit(',', 1)[1]] = params[index+1].rsplit(',', 1)[0]
-                    else:
-                        params_dict[params[index].rsplit(',', 1)[1]] = params[index+1]
+                    params_dict[params[index].rsplit(',', 1)[1]] = params[index+1]
 
         return params_dict
 
