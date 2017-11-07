@@ -6,6 +6,7 @@ import mimetypes
 import operator
 import json
 import urllib
+import re
 
 
 mappings = {'>': operator.gt, '>=': operator.ge,
@@ -219,13 +220,20 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         Provides comma separated parameters "a=1,b=2" as a dictionary
         """
-        # self.logger.info('csv_params: ' + csv_params)
         params_dict = dict()
-        plist = csv_params.split(",")
-        plist = filter(None, plist)  # Remove empty strings
-        for p in plist:
-            k, v = p.strip().split('=')
-            params_dict[k] = v
+
+        params = csv_params.replace(' ', '').split('=')
+        for index in range(len(params)):
+            if len(params) > index+1:
+                if index == 0:
+                    print params[index]
+                    params_dict[params[index]] = params[index+1].rsplit(',', 1)[0]
+                else:
+                    if "=" in params[index+1].rsplit(',', 1)[0]:
+                        params_dict[params[index].rsplit(',', 1)[1]] = params[index+1].rsplit(',', 1)[0]
+                    else:
+                        params_dict[params[index].rsplit(',', 1)[1]] = params[index+1]
+
         return params_dict
 
     def _parse_headers_params(self):
