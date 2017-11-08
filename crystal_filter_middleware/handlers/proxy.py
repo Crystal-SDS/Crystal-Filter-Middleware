@@ -181,7 +181,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         for key in crystal_md["filter-list"].keys():
             cfilter = crystal_md["filter-list"][key]
-            if cfilter['reverse']:
+            if cfilter['reverse'] != 'False':
                 current_params = cfilter['params']
                 if current_params:
                     cfilter['params']['reverse'] = 'True'
@@ -263,7 +263,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.object_filter_exec_list:
             object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal_filters'] = object_server_filters
+            self.request.headers['crystal.filters'] = object_server_filters
 
         response = self.request.get_response(self.app)
 
@@ -294,7 +294,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.object_filter_exec_list:
             object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal_filters'] = object_server_filters
+            self.request.headers['crystal.filters'] = object_server_filters
 
         response = self.request.get_response(self.app)
 
@@ -317,7 +317,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.object_filter_exec_list:
             object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal_filters'] = object_server_filters
+            self.request.headers['crystal.filters'] = object_server_filters
 
         return self.request.get_response(self.app)
 
@@ -335,7 +335,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.object_filter_exec_list:
             object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal_filters'] = object_server_filters
+            self.request.headers['crystal.filters'] = object_server_filters
 
         return self.request.get_response(self.app)
 
@@ -353,6 +353,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         if self.object_filter_exec_list:
             object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal_filters'] = object_server_filters
+            self.request.headers['crystal.filters'] = object_server_filters
 
         return self.request.get_response(self.app)

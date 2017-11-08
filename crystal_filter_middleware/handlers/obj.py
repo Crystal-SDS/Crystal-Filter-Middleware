@@ -37,8 +37,8 @@ class CrystalObjectHandler(CrystalBaseHandler):
                 new_filter_list[launch_key] = filter_list[key]
 
         # Get filter list to execute from proxy server
-        if 'crystal_filters' in self.request.headers:
-            req_filter_list = json.loads(self.request.headers.pop('crystal_filters'))
+        if 'crystal.filters' in self.request.headers:
+            req_filter_list = json.loads(self.request.headers.pop('crystal.filters'))
             for key in sorted(req_filter_list, reverse=True):
                 launch_key = len(new_filter_list.keys())
                 new_filter_list[launch_key] = req_filter_list[key]
@@ -74,8 +74,8 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         PUT handler on Object Server
         """
-        if 'crystal_filters' in self.request.headers:
-            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+        if 'crystal.filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal.filters'])
             self._build_pipeline(filter_exec_list)
 
         return self.request.get_response(self.app)
@@ -85,8 +85,8 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         POST handler on Object Server
         """
-        if 'crystal_filters' in self.request.headers:
-            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+        if 'crystal.filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal.filters'])
             self._build_pipeline(filter_exec_list)
 
         return self.request.get_response(self.app)
@@ -96,8 +96,8 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         HEAD handler on Object Server
         """
-        if 'crystal_filters' in self.request.headers:
-            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+        if 'crystal.filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal.filters'])
             self._build_pipeline(filter_exec_list)
 
         return self.request.get_response(self.app)
@@ -107,8 +107,8 @@ class CrystalObjectHandler(CrystalBaseHandler):
         """
         DELETE handler on Object Server
         """
-        if 'crystal_filters' in self.request.headers:
-            filter_exec_list = json.loads(self.request.headers['crystal_filters'])
+        if 'crystal.filters' in self.request.headers:
+            filter_exec_list = json.loads(self.request.headers['crystal.filters'])
             self._build_pipeline(filter_exec_list)
 
         return self.request.get_response(self.app)
