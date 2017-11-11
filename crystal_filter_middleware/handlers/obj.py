@@ -12,7 +12,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
 
     def _parse_vaco(self):
         _, _, acc, cont, obj = self.request.split_path(
-            5, 5, rest_with_last=True)
+            3, 5, rest_with_last=True)
         return '0', acc, cont, obj
 
     def handle_request(self):
@@ -63,7 +63,7 @@ class CrystalObjectHandler(CrystalBaseHandler):
                 self.logger.info('There are Filters to execute')
                 self.logger.info(str(filter_exec_list))
                 self._build_pipeline(filter_exec_list)
-                return self.request.get_response(self.app)
+                response = self.request.get_response(self.app)
             else:
                 self.logger.info('No Filters to execute')
 

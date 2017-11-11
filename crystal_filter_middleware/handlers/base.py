@@ -98,7 +98,7 @@ class CrystalBaseHandler(object):
             crystal_enabled = True
         crystal_container = self.container in self.sds_containers
 
-        return (not crystal_container and self.obj and crystal_enabled)
+        return (not crystal_container and crystal_enabled)
 
     def _parse_vaco(self):
         """

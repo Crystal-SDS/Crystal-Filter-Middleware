@@ -107,11 +107,16 @@ class StorletFilter(object):
             storlet = self.filter_data.pop('name')
             params = self.parameters
             self.storlet_name = storlet
+            etag = None
 
-            if self.exec_server == 'proxy':
-                _, self.account, _, _ = req.split_path(4, 4, rest_with_last=True)
-            elif self.exec_server == 'object':
-                _, _, self.account, _, _ = req.split_path(5, 5, rest_with_last=True)
+            try:
+                if self.exec_server == 'proxy':
+                    _, self.account, _, _ = req.split_path(4, 4, rest_with_last=True)
+                elif self.exec_server == 'object':
+                    _, _, self.account, _, _ = req.split_path(5, 5, rest_with_last=True)
+            except:
+                # No object Request
+                return req.get_response(self.app)
 
             self.scope = self.account[5:18]
 
@@ -119,19 +124,42 @@ class StorletFilter(object):
                              ' storlet with parameters "' + str(params) + '"')
 
             self._setup_gateway()
+
+            if 'Etag' in req.headers.keys():
+                etag = req.headers.pop('Etag')
+
             if req.method == 'GET':
                 response = req.get_response(self.app)
+                content_length = response.headers['Content-Length']
+                if 'X-Object-Sysmeta-Crystal' in response.headers:
+                    crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
+                    if crystal_md['original-size']:
+                        content_length = crystal_md['original-size']
+                    if crystal_md['original-size']:
+                        etag = crystal_md['original-etag']
                 data_iter = response.app_iter
                 response.app_iter = self._call_gateway(response, params, data_iter)
-                if 'Content-Length' in response.headers:
-                    response.headers.pop('Content-Length')
+
+                if 'Content-Length' not in response.headers:
+                    response.headers['Content-Length'] = content_length
                 if 'Transfer-Encoding' in response.headers:
                     response.headers.pop('Transfer-Encoding')
-                return response
+
             elif req.method == 'PUT':
                 reader = req.environ['wsgi.input'].read
                 data_iter = iter(lambda: reader(65536), '')
                 req.environ['wsgi.input'] = self._call_gateway(req, params, data_iter)
+                if 'CONTENT_LENGTH' in req.environ:
+                    req.environ.pop('CONTENT_LENGTH')
+                req.headers['Transfer-Encoding'] = 'chunked'
+                response = req.get_response(self.app)
+
+            if etag:
+                response.headers['etag'] = etag
+            else:
+                response.headers['etag'] = ''
+
+            return response
 
         return req.get_response(self.app)
 

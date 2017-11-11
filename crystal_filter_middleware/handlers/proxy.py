@@ -5,8 +5,8 @@ from swift.common.utils import public
 import mimetypes
 import operator
 import json
+import copy
 import urllib
-import re
 
 
 mappings = {'>': operator.gt, '>=': operator.ge,
@@ -42,7 +42,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.object_filter_exec_list = self._build_filter_execution_list('object')
 
     def _parse_vaco(self):
-        return self.request.split_path(4, 4, rest_with_last=True)
+        return self.request.split_path(2, 4, rest_with_last=True)
 
     def handle_request(self):
 
@@ -77,7 +77,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         metadata = {}
         if self.method == 'put':
             for key in self.request.headers.keys():
-                metadata[key] = self.request.headers.get(key)
+                metadata[key.lower()] = self.request.headers.get(key)
         else:
             sub_req = make_subrequest(self.request.environ, method='HEAD',
                                       path=self.request.path_info,
@@ -101,10 +101,12 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 tag_checking = list()
                 for tag in tags:
                     key, value = tag.split(':')
-                    correct_tag = ('X-Object-Meta-'+key in metadata and
-                                   metadata['X-Object-Meta-'+key] == value) or \
-                                  ('X-Object-Sysmeta-'+key in metadata and
-                                   metadata['X-Object-Sysmeta-'+key] == value)
+                    meta_key = ('X-Object-Meta-'+key).lower()
+                    sysmeta_key = ('X-Object-Sysmeta-Meta-'+key).lower()
+                    correct_tag = (meta_key in metadata and
+                                   metadata[meta_key] == value) or \
+                                  (sysmeta_key in metadata and
+                                   metadata[sysmeta_key] == value)
                     tag_checking.append(correct_tag)
                 correct_tags = all(tag_checking)
 
@@ -181,7 +183,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         for key in crystal_md["filter-list"].keys():
             cfilter = crystal_md["filter-list"][key]
-            if cfilter['reverse'] != 'False':
+            if cfilter['reverse']:
                 current_params = cfilter['params']
                 if current_params:
                     cfilter['params']['reverse'] = 'True'
@@ -211,7 +213,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         metadata = {}
         metadata["original-etag"] = self.request.headers.get('ETag', '')
         metadata["original-size"] = self.request.headers.get('Content-Length', '')
-        metadata["filter-list"] = filter_exec_list
+        metadata["filter-list"] = copy.deepcopy(filter_exec_list)
         crystal_md = self._format_crystal_metadata(metadata)
         if crystal_md["filter-list"]:
             self.request.headers['X-Object-Sysmeta-Crystal'] = crystal_md
@@ -255,8 +257,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if self.proxy_filter_exec_list:
             self.logger.info('There are Filters to execute')
             self.logger.info(str(self.proxy_filter_exec_list))
-            if 'Etag' in self.request.headers.keys():
-                self.etag = self.request.headers.pop('Etag')
             self._build_pipeline(self.proxy_filter_exec_list)
         else:
             self.logger.info('No Filters to execute')
@@ -267,14 +267,15 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         response = self.request.get_response(self.app)
 
+        """
         if 'Content-Length' in response.headers:
             response.headers.pop('Content-Length')
+
         if 'Transfer-Encoding' in response.headers:
             response.headers.pop('Transfer-Encoding')
+        """
 
-        if self.etag:
-            response.headers['etag'] = self.etag
-
+        print response.headers
         return response
 
     @public
@@ -285,8 +286,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
         if self.proxy_filter_exec_list:
             self.logger.info('There are Filters to execute')
             self.logger.info(str(self.proxy_filter_exec_list))
-            if 'Etag' in self.request.headers.keys():
-                self.etag = self.request.headers.pop('Etag')
             self._set_crystal_metadata()
             self._build_pipeline(self.proxy_filter_exec_list)
         else:
@@ -296,12 +295,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
             object_server_filters = json.dumps(self.object_filter_exec_list)
             self.request.headers['crystal.filters'] = object_server_filters
 
-        response = self.request.get_response(self.app)
-
-        if self.etag:
-            response.headers['Etag'] = self.etag
-
-        return response
+        return self.request.get_response(self.app)
 
     @public
     def POST(self):
