@@ -130,18 +130,11 @@ class StorletFilter(object):
 
             if req.method == 'GET':
                 response = req.get_response(self.app)
-                content_length = response.headers['Content-Length']
-                if 'X-Object-Sysmeta-Crystal' in response.headers:
-                    crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
-                    if crystal_md['original-size']:
-                        content_length = crystal_md['original-size']
-                    if crystal_md['original-size']:
-                        etag = crystal_md['original-etag']
                 data_iter = response.app_iter
                 response.app_iter = self._call_gateway(response, params, data_iter)
 
-                if 'Content-Length' not in response.headers:
-                    response.headers['Content-Length'] = content_length
+                if 'Content-Length' in response.headers:
+                    response.headers.pop('Content-Length')
                 if 'Transfer-Encoding' in response.headers:
                     response.headers.pop('Transfer-Encoding')
 

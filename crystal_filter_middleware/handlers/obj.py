@@ -55,15 +55,14 @@ class CrystalObjectHandler(CrystalBaseHandler):
         if response.is_success:
             filter_list = None
             if 'X-Object-Sysmeta-Crystal' in response.headers:
-                crystal_md = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
-                filter_list = crystal_md.get('filter-list')
-
+                filter_list = eval(response.headers.pop('X-Object-Sysmeta-Crystal'))
             filter_exec_list = self._augment_filter_execution_list(filter_list)
             if filter_exec_list:
                 self.logger.info('There are Filters to execute')
                 self.logger.info(str(filter_exec_list))
                 self._build_pipeline(filter_exec_list)
                 response = self.request.get_response(self.app)
+                response.headers.pop('X-Object-Sysmeta-Crystal')
             else:
                 self.logger.info('No Filters to execute')
 

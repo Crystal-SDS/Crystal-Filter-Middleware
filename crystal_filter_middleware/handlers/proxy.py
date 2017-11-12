@@ -175,14 +175,14 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         return filter_execution_list
 
-    def _format_crystal_metadata(self, crystal_md):
+    def _format_crystal_metadata(self, filter_list):
         """
         This method generates the metadata that will be stored alongside the
         object in the PUT requests. It allows the reverse case of the filters
         without querying the centralized controller.
         """
-        for key in crystal_md["filter-list"].keys():
-            cfilter = crystal_md["filter-list"][key]
+        for key in filter_list.keys():
+            cfilter = filter_list[key]
             if cfilter['reverse']:
                 current_params = cfilter['params']
                 if current_params:
@@ -193,9 +193,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
                 cfilter['execution_server'] = cfilter['reverse']
                 cfilter.pop('reverse')
             else:
-                crystal_md["filter-list"].pop(key)
+                filter_list.pop(key)
 
-        return crystal_md
+        return filter_list
 
     def _set_crystal_metadata(self):
         """
@@ -210,13 +210,38 @@ class CrystalProxyHandler(CrystalBaseHandler):
         for key in sorted(self.object_filter_exec_list.keys()):
             filter_exec_list[len(filter_exec_list)] = self.object_filter_exec_list[key]
 
-        metadata = {}
-        metadata["original-etag"] = self.request.headers.get('ETag', '')
-        metadata["original-size"] = self.request.headers.get('Content-Length', '')
-        metadata["filter-list"] = copy.deepcopy(filter_exec_list)
-        crystal_md = self._format_crystal_metadata(metadata)
-        if crystal_md["filter-list"]:
+        filter_list = copy.deepcopy(filter_exec_list)
+        crystal_md = self._format_crystal_metadata(filter_list)
+        if crystal_md:
             self.request.headers['X-Object-Sysmeta-Crystal'] = crystal_md
+
+    def _save_size_and_etag(self):
+        """
+        Save original object Size and Etag
+        """
+        etag = self.request.headers.get('ETag', None)
+        if etag:
+            self.request.headers['X-Object-Sysmeta-Etag'] = etag
+            self.request.headers['X-Backend-Container-Update-Override-Etag'] = etag
+
+        size = self.request.headers.get('Content-Length')
+        self.request.headers['X-Object-Sysmeta-Size'] = size
+        self.request.headers['X-Backend-Container-Update-Override-Size'] = size
+
+    def _recover_size_and_etag(self, response):
+        """
+        Recovers the original Object Size and Etag
+        """
+        if 'X-Object-Sysmeta-Size' in response.headers and self.obj:
+            size = response.headers.pop('X-Object-Sysmeta-Size')
+            response.headers['Content-Length'] = size
+
+        if 'X-Object-Sysmeta-Etag' in response.headers and self.obj:
+            etag = response.headers.pop('X-Object-Sysmeta-Etag')
+            response.headers['etag'] = etag
+
+        if 'Transfer-Encoding' in response.headers and self.obj:
+                response.headers.pop('Transfer-Encoding')
 
     def _parse_csv_params(self, csv_params):
         """
@@ -251,8 +276,27 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
     @public
     def GET(self):
+        """Handler for HTTP GET requests."""
+        return self.GETorHEAD()
+
+    @public
+    def HEAD(self):
+        """Handler for HTTP HEAD requests."""
+        return self.GETorHEAD()
+
+    @public
+    def POST(self):
+        """Handler for HTTP POST requests."""
+        return self.POSTorDELETE()
+
+    @public
+    def DELETE(self):
+        """Handler for HTTP DELETE requests."""
+        return self.POSTorDELETE()
+
+    def GETorHEAD(self):
         """
-        GET handler on Proxy
+        Handle HTTP GET or HEAD requests.
         """
         if self.proxy_filter_exec_list:
             self.logger.info('There are Filters to execute')
@@ -266,27 +310,20 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.request.headers['crystal.filters'] = object_server_filters
 
         response = self.request.get_response(self.app)
+        self._recover_size_and_etag(response)
 
-        """
-        if 'Content-Length' in response.headers:
-            response.headers.pop('Content-Length')
-
-        if 'Transfer-Encoding' in response.headers:
-            response.headers.pop('Transfer-Encoding')
-        """
-
-        print response.headers
         return response
 
     @public
     def PUT(self):
         """
-        PUT handler on Proxy
+        Handle HTTP PUT requests.
         """
         if self.proxy_filter_exec_list:
             self.logger.info('There are Filters to execute')
             self.logger.info(str(self.proxy_filter_exec_list))
             self._set_crystal_metadata()
+            self._save_size_and_etag()
             self._build_pipeline(self.proxy_filter_exec_list)
         else:
             self.logger.info('No filters to execute')
@@ -298,45 +335,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         return self.request.get_response(self.app)
 
     @public
-    def POST(self):
+    def POSTorDELETE(self):
         """
-        POST handler on Proxy
-        """
-        if self.proxy_filter_exec_list:
-            self.logger.info('There are Filters to execute')
-            self.logger.info(str(self.proxy_filter_exec_list))
-            self._build_pipeline(self.proxy_filter_exec_list)
-        else:
-            self.logger.info('No filters to execute')
-
-        if self.object_filter_exec_list:
-            object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal.filters'] = object_server_filters
-
-        return self.request.get_response(self.app)
-
-    @public
-    def HEAD(self):
-        """
-        HEAD handler on Proxy
-        """
-        if self.proxy_filter_exec_list:
-            self.logger.info('There are Filters to execute')
-            self.logger.info(str(self.proxy_filter_exec_list))
-            self._build_pipeline(self.proxy_filter_exec_list)
-        else:
-            self.logger.info('No filters to execute')
-
-        if self.object_filter_exec_list:
-            object_server_filters = json.dumps(self.object_filter_exec_list)
-            self.request.headers['crystal.filters'] = object_server_filters
-
-        return self.request.get_response(self.app)
-
-    @public
-    def DELETE(self):
-        """
-        DELETE handler on Proxy
+        Handle HTTP POST or DELETE requests.
         """
         if self.proxy_filter_exec_list:
             self.logger.info('There are Filters to execute')
