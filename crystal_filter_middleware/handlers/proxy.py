@@ -2,12 +2,11 @@ from crystal_filter_middleware.handlers import CrystalBaseHandler
 from swift.common.swob import HTTPMethodNotAllowed
 from swift.common.wsgi import make_subrequest
 from swift.common.utils import public
-import mimetypes
 import operator
 import json
 import copy
 import urllib
-
+import os
 
 mappings = {'>': operator.gt, '>=': operator.ge,
             '==': operator.eq, '<=': operator.le, '<': operator.lt,
@@ -58,12 +57,6 @@ class CrystalProxyHandler(CrystalBaseHandler):
             self.logger.info('Request disabled for Crystal')
             return self.request.get_response(self.app)
 
-    def _get_object_type(self, metadata):
-        object_type = metadata['Content-Type']
-        if not object_type:
-            object_type = mimetypes.guess_type(self.request.environ['PATH_INFO'])[0]
-        return object_type
-
     def _check_conditions(self, filter_metadata):
         """
         This method ckecks the object_tag, object_type and object_size parameters
@@ -93,8 +86,9 @@ class CrystalProxyHandler(CrystalBaseHandler):
         try:
             if filter_metadata['object_type']:
                 obj_type = filter_metadata['object_type']
-                correct_type = self._get_object_type(metadata) in \
-                    self.redis.lrange("object_type:" + obj_type, 0, -1)
+                filename = self.request.environ['PATH_INFO']
+                extension = os.path.splitext(filename)[1][1:]
+                correct_type = extension in self.redis.lrange("object_type:" + obj_type, 0, -1)
 
             if filter_metadata['object_tag']:
                 tags = filter_metadata['object_tag'].split(',')
