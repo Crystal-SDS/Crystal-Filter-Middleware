@@ -7,6 +7,7 @@ import json
 import copy
 import urllib
 import os
+import re
 
 mappings = {'>': operator.gt, '>=': operator.ge,
             '==': operator.eq, '<=': operator.le, '<': operator.lt,
@@ -85,10 +86,11 @@ class CrystalProxyHandler(CrystalBaseHandler):
 
         try:
             if filter_metadata['object_type']:
-                obj_type = filter_metadata['object_type']
+                object_name = filter_metadata['object_name']
                 filename = self.request.environ['PATH_INFO']
-                extension = os.path.splitext(filename)[1][1:]
-                correct_type = extension in self.redis.lrange("object_type:" + obj_type, 0, -1)
+                pattern = re.compile(object_name)
+                if not pattern.search(filename):
+                    correct_type = False
 
             if filter_metadata['object_tag']:
                 tags = filter_metadata['object_tag'].split(',')
@@ -177,7 +179,7 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         for key in filter_list.keys():
             cfilter = filter_list[key]
-            if cfilter['reverse']:
+            if cfilter['reverse'] != 'False':
                 current_params = cfilter['params']
                 if current_params:
                     cfilter['params']['reverse'] = 'True'
