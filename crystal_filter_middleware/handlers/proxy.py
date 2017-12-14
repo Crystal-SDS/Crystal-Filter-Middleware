@@ -245,15 +245,15 @@ class CrystalProxyHandler(CrystalBaseHandler):
         """
         params_dict = dict()
 
-        params = csv_params.replace(' ', '').split('=')
+        params = [x.strip() for x in csv_params.split('=')]
         for index in range(len(params)):
-            if len(params) > index+1:
+            if len(params) > index + 1:
                 if index == 0:
-                    params_dict[params[index]] = params[index+1].rsplit(',', 1)[0]
+                    params_dict[params[index]] = params[index + 1].rsplit(',', 1)[0].strip()
                 elif index < len(params):
-                    params_dict[params[index].rsplit(',', 1)[1]] = params[index+1].rsplit(',', 1)[0]
+                    params_dict[params[index].rsplit(',', 1)[1].strip()] = params[index + 1].rsplit(',', 1)[0].strip()
                 else:
-                    params_dict[params[index].rsplit(',', 1)[1]] = params[index+1]
+                    params_dict[params[index].rsplit(',', 1)[1].strip()] = params[index + 1]
 
         return params_dict
 
